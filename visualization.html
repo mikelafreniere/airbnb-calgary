@@ -14,7 +14,9 @@
             <p>Data from July 10th, 2017</p>
         </div>
         <div class="panel">
-            <svg></svg>
+            <svg>
+                <g></g>
+            </svg>
         </div>
 
         <div class="filter-panel panel lighter-gray-background">
@@ -107,10 +109,17 @@
         var path = d3.geoPath()
             .projection(projection);
 
+        var attachZoom = d3.zoom().scaleExtent([1, 15]).on("zoom", function(d) {
+            d3.select("g").attr("transform", d3.event.transform);
+        })
+
         // Modify SVG element
         var svg = d3.select("svg")
             .attr("width", WIDTH)
-            .attr("height", HEIGHT);
+            .attr("height", HEIGHT)
+            .call(attachZoom);
+
+        var innerGraphicContainer = svg.select("g");
 
         // Modify table element
         var table = d3.select("table")
@@ -121,7 +130,7 @@
         d3.json("data/calgary.geojson").then(function(json) {
 
             //Bind data and create one path per GeoJSON feature
-            svg.selectAll("path")
+            innerGraphicContainer.selectAll("path")
                 .data(json.features)
                 .enter()
                 .append("path")
@@ -131,8 +140,7 @@
                 .append("title")
                 .text(function(d) {
                     return d.properties.name;
-                })
-
+                });
         });
 
         // *** FILTER PANEL ***
@@ -164,7 +172,6 @@
             .attr("height", "68px")
             .attr("stroke", "black")
             .attr("stroke-width", "1px");
-
 
     </script>
 </html>
