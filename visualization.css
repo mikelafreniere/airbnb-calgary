@@ -31,6 +31,11 @@ svg {
     margin: 0
 }
 
+.display-panel {
+    margin-left: 12px;
+    margin-bottom: 8px;
+}
+
 .gray-background {
     background-color: rgb(56, 56, 56);
 }
@@ -67,4 +72,22 @@ svg {
 
 .range-text {
     padding: 0 8px;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+.table-headers {
+    background-color: rgb(84, 114, 157)
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: gray;
 }

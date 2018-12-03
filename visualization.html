@@ -16,6 +16,7 @@
         <div class="panel">
             <svg></svg>
         </div>
+
         <div class="filter-panel panel lighter-gray-background">
             <h2 class="filter-title gray-background">Filters:</h2>
             <!-- Price -->
@@ -75,6 +76,21 @@
                 </div>
             </div>
         </div>
+
+        <table class="listings-table panel gray-background">
+            <tr class="table-headers">
+                <th>Room ID</th>
+                <th>Price (per night)</th>
+                <th>Room Type</th>
+                <th>Rating</th>
+                <th>Accomodates</th>
+                <th>Bed/Bath</th>
+                <th>Neighborhood</th>
+                <th>Min Stay</th>
+            </tr>
+        </table>
+
+        <div class="display-panel panel gray-background"></div>
     </body>
 
     <script type="text/javascript">
@@ -95,6 +111,11 @@
         var svg = d3.select("svg")
             .attr("width", WIDTH)
             .attr("height", HEIGHT);
+
+        // Modify table element
+        var table = d3.select("table")
+            .attr("width", WIDTH + 2) // accomodate for border on svg
+            .attr("max-height", HEIGHT / 2);
 
         // Load in GeoJSON data
         d3.json("data/calgary.geojson").then(function(json) {
@@ -126,8 +147,12 @@
 
         // TODO: append options to dropdowns based on min/max values
 
-        // Build out 
-        filterPanel.append
+        // *** DISPLAY PANEL ***
+
+        var displayPanel = d3.select('.display-panel')
+            .style("width", Math.max(rightPanelWidth, 300) + "px")
+            .style("height", HEIGHT / 2 + "px");
+
 
         // *** LEGEND ***
 
