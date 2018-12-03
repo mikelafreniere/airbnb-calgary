@@ -98,6 +98,9 @@
     <script type="text/javascript">
         const WIDTH = 1100;
         const HEIGHT = 500;
+        const MIN_RIGHT_PANEL = 230;
+
+        var airbnbDict = {}
 
         // Define map projection
         var projection = d3.geoMercator()
@@ -109,7 +112,7 @@
         var path = d3.geoPath()
             .projection(projection);
 
-        var attachZoom = d3.zoom().scaleExtent([1, 15]).on("zoom", function(d) {
+        var attachZoom = d3.zoom().scaleExtent([1, 15]).on("zoom", function() {
             d3.select("g").attr("transform", d3.event.transform);
         })
 
@@ -126,10 +129,9 @@
             .attr("width", WIDTH + 2) // accomodate for border on svg
             .attr("max-height", HEIGHT / 2);
 
-        // Load in GeoJSON data
-        d3.json("data/calgary.geojson").then(function(json) {
-
-            //Bind data and create one path per GeoJSON feature
+        // Draws the cartography of Calgary
+        function generateMap(json) {
+            // Bind data and create one path per GeoJSON feature
             innerGraphicContainer.selectAll("path")
                 .data(json.features)
                 .enter()
@@ -141,6 +143,49 @@
                 .text(function(d) {
                     return d.properties.name;
                 });
+        }
+
+        // Populate the listings dictionary and plot every listing on the map
+        function initalizeListings(data) {
+            var listingProjection
+
+            data.forEach(function(d) {
+                // Create dictionary entry for listing data
+                airbnbDict[d.room_id] = {
+                    'room_type': d.room_type,
+                    'borough': d.borough,
+                    'neighborhood': d.neighborhood,
+                    'reviews': d.reviews,
+                    'overall_satisfaction': d.overall_satisfaction,
+                    'accomodates': d.accomodates,
+                    'bedrooms': d.bedrooms,
+                    'bathrooms': d.bathrooms,
+                    'price': d.price,
+                    'min_stay': d.minstay,
+                    'lat': d.latitude,
+                    'long': d.longitude
+                }
+
+                listingProjection = projection([d.longitude, d.latitude])
+
+                // Plot the listing on the map
+                innerGraphicContainer
+                    .append("circle")
+                    .attr("cx", listingProjection[0])
+                    .attr("cy", listingProjection[1])
+                    .attr("r", 1)
+                    .style("fill", "yellow");
+            });
+        }
+
+        // Load in GeoJSON data
+        d3.json("data/calgary.geojson").then(function(json) {
+            generateMap(json);
+
+            //Load in cities data
+            d3.csv("data/tomslee_airbnb_calgary_1443_2017-07-10.csv").then(function(data) {
+                initalizeListings(data);
+            });
         });
 
         // *** FILTER PANEL ***
@@ -150,7 +195,7 @@
         var rightPanelWidth = bodyWidth - (WIDTH) - 14;
 
         var filterPanel = d3.select('.filter-panel')
-            .style("width", Math.max(rightPanelWidth, 300) + "px")
+            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
             .style("height", HEIGHT + "px");
 
         // TODO: append options to dropdowns based on min/max values
@@ -158,9 +203,8 @@
         // *** DISPLAY PANEL ***
 
         var displayPanel = d3.select('.display-panel')
-            .style("width", Math.max(rightPanelWidth, 300) + "px")
+            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
             .style("height", HEIGHT / 2 + "px");
-
 
         // *** LEGEND ***
 
