@@ -9,23 +9,76 @@
     </head>
 
     <body>
-        <div class="page-header">
+        <div class="page-header gray-background">
             <h1>Airbnb Listings: The City of Calgary</h1>
             <p>Data from July 10th, 2017</p>
         </div>
-        <div id="left-panel" class="panel">
+        <div class="panel">
             <svg></svg>
         </div>
-        <div id="right-panel" class="panel">
-            <h3 class="slider-heading">Price <span id="force-value">50</span></h3>
-            <div class="slider-container">
-                <input type="range" min="0" max="100" value="50" step="any" class="slider" id="slider-input">
+        <div class="filter-panel panel lighter-gray-background">
+            <h2 class="filter-title gray-background">Filters:</h2>
+            <!-- Price -->
+            <div class="filter-section lighter-gray-background">
+                <p>Price</p>
+                <div class="input-container">
+                    <select class="dropdown inline" name="price-min"></select>
+                    <p class="range-text inline">to</p>
+                    <select class="dropdown inline" name="price-max"></select>
+                </div>
+            </div>
+            <!-- Rating -->
+            <div class="filter-section gray-background">
+                <p>Rating</p>
+                <div class="input-container">
+                    <select class="dropdown" name="rating"></select>
+                </div>
+            </div>
+            <!-- Number of People -->
+            <div class="filter-section lighter-gray-background">
+                <p>Number of People</p>
+                <div class="input-container">
+                    <select class="dropdown" name="people"></select>
+                </div>
+            </div>
+            <!-- Number of Nights -->
+            <div class="filter-section gray-background">
+                <p> Number of Nights</p>
+                <div class="input-container">
+                    <select class="dropdown" name="nights"></select>
+                </div>
+            </div>
+            <!-- Room Type -->
+            <div class="filter-section lighter-gray-background">
+                <p>Room Type</p>
+                <div class="input-container">
+                    <div class="checkbox-grouping">
+                        <input type="checkbox" class="slider" name="house-box"> House <br>
+                        <input type="checkbox" class="slider" name="apartment-box"> Apartment
+                    </div>
+                    <input type="checkbox" class="slider" name="private-box"> Private <br>
+                    <input type="checkbox" class="slider" name="shared-box"> Shared
+                </div>
+            </div>
+            <!-- Bedroooms -->
+            <div class="filter-section gray-background">
+                <p>Bedrooms</p>
+                <div class="input-container">
+                    <select class="dropdown" name="bedrooms"></select>
+                </div>
+            </div>
+            <!-- Bathrooms -->
+            <div class="filter-section lighter-gray-background">
+                <p>Bathrooms</p>
+                <div class="input-container">
+                    <select class="dropdown" name="bathrooms"></select>
+                </div>
             </div>
         </div>
     </body>
 
     <script type="text/javascript">
-        const WIDTH = 1000;
+        const WIDTH = 1100;
         const HEIGHT = 500;
 
         // Define map projection
@@ -61,13 +114,22 @@
 
         });
 
+        // *** FILTER PANEL ***
+
         var bodyWidth = +d3.select("body").node().getBoundingClientRect().width;
         // Total width - svg width - (borders + padding)
-        var rightPanelWidth = bodyWidth - (WIDTH) - 16;
+        var rightPanelWidth = bodyWidth - (WIDTH) - 14;
 
-        d3.select('#right-panel')
-            .style("width", Math.max(rightPanelWidth, 400) + "px")
+        var filterPanel = d3.select('.filter-panel')
+            .style("width", Math.max(rightPanelWidth, 300) + "px")
             .style("height", HEIGHT + "px");
+
+        // TODO: append options to dropdowns based on min/max values
+
+        // Build out 
+        filterPanel.append
+
+        // *** LEGEND ***
 
         var legend = svg.append("rect")
             .attr("fill", "rgb(56, 56, 56)")
