@@ -25,30 +25,37 @@
             <div class="filter-section lighter-gray-background">
                 <p>Price</p>
                 <div class="input-container">
-                    <select class="dropdown inline" name="price-min"></select>
+                    <select class="dropdown inline" id="price-min"></select>
                     <p class="range-text inline">to</p>
-                    <select class="dropdown inline" name="price-max"></select>
+                    <select class="dropdown inline" id="price-max"></select>
                 </div>
             </div>
             <!-- Rating -->
             <div class="filter-section gray-background">
                 <p>Rating</p>
                 <div class="input-container">
-                    <select class="dropdown" name="rating"></select>
+                    <select class="dropdown" id="rating">
+                        <option value="0">All</option>
+                        <option value="1">1+</option>
+                        <option value="2">2+</option>
+                        <option value="3">3+</option>
+                        <option value="4">4+</option>
+                        <option value="5">5</option>
+                    </select>
                 </div>
             </div>
             <!-- Number of People -->
             <div class="filter-section lighter-gray-background">
                 <p>Number of People</p>
                 <div class="input-container">
-                    <select class="dropdown" name="people"></select>
+                    <select class="dropdown" id="people"></select>
                 </div>
             </div>
             <!-- Number of Nights -->
             <div class="filter-section gray-background">
                 <p> Number of Nights</p>
                 <div class="input-container">
-                    <select class="dropdown" name="nights"></select>
+                    <select class="dropdown" id="nights"></select>
                 </div>
             </div>
             <!-- Room Type -->
@@ -67,14 +74,14 @@
             <div class="filter-section gray-background">
                 <p>Bedrooms</p>
                 <div class="input-container">
-                    <select class="dropdown" name="bedrooms"></select>
+                    <select class="dropdown" id="bedrooms"></select>
                 </div>
             </div>
             <!-- Bathrooms -->
             <div class="filter-section lighter-gray-background">
                 <p>Bathrooms</p>
                 <div class="input-container">
-                    <select class="dropdown" name="bathrooms"></select>
+                    <select class="dropdown" id="bathrooms"></select>
                 </div>
             </div>
         </div>
@@ -85,7 +92,7 @@
                 <th>Price (per night)</th>
                 <th>Room Type</th>
                 <th>Rating</th>
-                <th>Accomodates</th>
+                <th>Accommodates</th>
                 <th>Bed/Bath</th>
                 <th>Neighborhood</th>
                 <th>Min Stay</th>
@@ -126,7 +133,7 @@
 
         // Modify table element
         var table = d3.select("table")
-            .attr("width", WIDTH + 2) // accomodate for border on svg
+            .attr("width", WIDTH + 2) // accommodate for border on svg
             .attr("max-height", HEIGHT / 2);
 
         // Draws the cartography of Calgary
@@ -145,9 +152,59 @@
                 });
         }
 
-        // Populate the listings dictionary and plot every listing on the map
+        // Set the options in the dropdown filters
+        function setFilters(accommodates, bedrooms, bathrooms, price, stay) {
+            var accommodatesDropdown = d3.select('#people');
+            var bedroomsDropdown = d3.select('#bedrooms');
+            var bathroomsDropdown = d3.select('#bathrooms');
+            var minPriceDropdown = d3.select('#price-min');
+            var maxPriceDropdown = d3.select('#price-max');
+            var stayDropdown = d3.select('#nights');
+            
+            // Populate the 'Number of People' dropdown
+            for (i = 0; i < accommodates + 1; i++) {
+                accommodatesDropdown.append("option")
+                    .attr("value", i)
+                    .text(i + "+");
+            }
+            // Populate the 'Bedrooms' dropdown
+            for (i = 0; i < bedrooms + 1; i++) {
+                bedroomsDropdown.append("option")
+                    .attr("value", i)
+                    .text(i + "+");
+            }
+            // Populate the 'Bathrooms' dropdown
+            for (i = 0; i < bathrooms + 1; i++) {
+                bathroomsDropdown.append("option")
+                    .attr("value", i)
+                    .text(i + "+");
+            }
+            // Populate the 'Price' dropdowns in intervals of $50
+            for (i = 0; i < price + 1; i+=50) {
+                minPriceDropdown.append("option")
+                    .attr("value", i)
+                    .text("$" + i);
+                maxPriceDropdown.append("option")
+                    .attr("value", i)
+                    .text("$" + i);
+            }
+            // Populate the 'Number of Nights' dropdown
+            for (i = 0; i < stay + 1; i++) {
+                stayDropdown.append("option")
+                    .attr("value", i)
+                    .text(i + "+");
+            }
+        }
+
+        // Populate the listings dictionary, the filter dropdowns, and plot every listing onto the map
+        // Note: these could be split up into separate functions but this way it can all be accomplished in one loop.
         function initalizeListings(data) {
-            var listingProjection
+            var listingProjection;
+            var maxAccommodates = 0;
+            var maxBedrooms = 0;
+            var maxBathrooms = 0;
+            var maxPrice = 0;
+            var maxStay = 0;
 
             data.forEach(function(d) {
                 // Create dictionary entry for listing data
@@ -155,15 +212,36 @@
                     'room_type': d.room_type,
                     'borough': d.borough,
                     'neighborhood': d.neighborhood,
-                    'reviews': d.reviews,
-                    'overall_satisfaction': d.overall_satisfaction,
-                    'accomodates': d.accomodates,
-                    'bedrooms': d.bedrooms,
-                    'bathrooms': d.bathrooms,
-                    'price': d.price,
-                    'min_stay': d.minstay,
+                    'reviews': +d.reviews,
+                    'overall_satisfaction': +d.overall_satisfaction,
+                    'accommodates': +d.accommodates,
+                    'bedrooms': +d.bedrooms,
+                    'bathrooms': +d.bathrooms,
+                    'price': +d.price,
+                    'min_stay': +d.minstay,
                     'lat': d.latitude,
                     'long': d.longitude
+                }
+
+                // Figure out max values for the filter dropdowns
+                // Note: this could be hardcoded but I prefer it to be dynamic in case of data changes.
+                if (+d.accommodates > maxAccommodates) {
+                    maxAccommodates = +d.accommodates;
+                }
+                if (+d.bedrooms > maxBedrooms) {
+                    maxBedrooms = +d.bedrooms;
+                }
+                if (+d.bathrooms > maxBathrooms) {
+                    maxBathrooms = +d.bathrooms;
+                }
+                if (+d.price > maxPrice) {
+                    maxPrice = +d.price;
+                }
+                if (+d.price > maxPrice) {
+                    maxPrice = +d.price;
+                }
+                if (+d.minstay > maxStay) {
+                    maxStay = +d.minstay;
                 }
 
                 listingProjection = projection([d.longitude, d.latitude])
@@ -176,6 +254,7 @@
                     .attr("r", 1)
                     .style("fill", "yellow");
             });
+            setFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
         }
 
         // Load in GeoJSON data
