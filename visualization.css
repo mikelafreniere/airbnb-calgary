@@ -91,3 +91,11 @@ td, th {
 tr:nth-child(even) {
     background-color: gray;
 }
+
+.right-align-text {
+    text-align: right;
+}
+
+#table-panel {
+    overflow-y: overlay;
+}

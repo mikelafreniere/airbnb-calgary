@@ -63,11 +63,10 @@
                 <p>Room Type</p>
                 <div class="input-container">
                     <div class="checkbox-grouping">
-                        <input type="checkbox" class="slider" name="house-box"> House <br>
-                        <input type="checkbox" class="slider" name="apartment-box"> Apartment
+                        <input type="checkbox" class="slider" id="private-box"> Private <br>
                     </div>
-                    <input type="checkbox" class="slider" name="private-box"> Private <br>
-                    <input type="checkbox" class="slider" name="shared-box"> Shared
+                    <input type="checkbox" class="slider" id="house-box"> House <br>
+                    <input type="checkbox" class="slider" id="shared-box"> Shared
                 </div>
             </div>
             <!-- Bedroooms -->
@@ -86,18 +85,20 @@
             </div>
         </div>
 
-        <table class="listings-table panel gray-background">
-            <tr class="table-headers">
-                <th>Room ID</th>
-                <th>Price (per night)</th>
-                <th>Room Type</th>
-                <th>Rating</th>
-                <th>Accommodates</th>
-                <th>Bed/Bath</th>
-                <th>Neighborhood</th>
-                <th>Min Stay</th>
-            </tr>
-        </table>
+        <div id="table-panel" class="panel gray-background">
+            <table>
+                <tr class="table-headers">
+                    <th>Room ID</th>
+                    <th>Price (per night)</th>
+                    <th>Room Type</th>
+                    <th>Rating</th>
+                    <th>Accommodates</th>
+                    <th>Bed/Bath</th>
+                    <th>Neighborhood</th>
+                    <th>Min Stay</th>
+                </tr>
+            </table>
+        </div>
 
         <div class="display-panel panel gray-background"></div>
     </body>
@@ -106,6 +107,7 @@
         const WIDTH = 1100;
         const HEIGHT = 500;
         const MIN_RIGHT_PANEL = 230;
+        const PRICE_SOFT_CAP = 400;
 
         var airbnbDict = {}
 
@@ -131,10 +133,21 @@
 
         var innerGraphicContainer = svg.select("g");
 
+        // Define scale quantize to sort price data into colour buckets
+        // Colours from: http://colorbrewer2.org/#type=sequential&scheme=Greens&n=5
+        var priceColour = d3.scaleQuantize()
+            .range(["rgb(186,228,179)", "rgb(116,196,118)", "rgb(49,163,84)", "rgb(0,109,44)"])
+            .domain([0, PRICE_SOFT_CAP]);
+
+
         // Modify table element
         var table = d3.select("table")
             .attr("width", WIDTH + 2) // accommodate for border on svg
-            .attr("max-height", HEIGHT / 2);
+        
+        d3.select("#table-panel")
+            .style("height", HEIGHT / 2 + "px")
+
+        // TODO: stop header row from scrolling
 
         // Draws the cartography of Calgary
         function generateMap(json) {
@@ -196,8 +209,9 @@
             }
         }
 
-        // Populate the listings dictionary, the filter dropdowns, and plot every listing onto the map
+        // Populate the listings dictionary, table, the filter dropdowns, and plot every listing onto the map
         // Note: these could be split up into separate functions but this way it can all be accomplished in one loop.
+        // TODO: cleanup large function
         function initalizeListings(data) {
             var listingProjection;
             var maxAccommodates = 0;
@@ -207,41 +221,48 @@
             var maxStay = 0;
 
             data.forEach(function(d) {
+                room_id = d.room_id;
+                price = +d.price;
+                room_type = d.room_type;
+                rating = +d.overall_satisfaction;
+                accommodates = +d.accommodates;
+                bedrooms = +d.bedrooms;
+                bathrooms = +d.bathrooms;
+                min_stay = +d.minstay;
+                neighborhood = d.neighborhood;
+
                 // Create dictionary entry for listing data
-                airbnbDict[d.room_id] = {
+                airbnbDict[room_id] = {
                     'room_type': d.room_type,
                     'borough': d.borough,
-                    'neighborhood': d.neighborhood,
+                    'neighborhood': neighborhood,
                     'reviews': +d.reviews,
                     'overall_satisfaction': +d.overall_satisfaction,
-                    'accommodates': +d.accommodates,
-                    'bedrooms': +d.bedrooms,
-                    'bathrooms': +d.bathrooms,
-                    'price': +d.price,
-                    'min_stay': +d.minstay,
+                    'accommodates': accommodates,
+                    'bedrooms': bedrooms,
+                    'bathrooms': bathrooms,
+                    'price': price,
+                    'min_stay': min_stay,
                     'lat': d.latitude,
                     'long': d.longitude
                 }
 
                 // Figure out max values for the filter dropdowns
                 // Note: this could be hardcoded but I prefer it to be dynamic in case of data changes.
-                if (+d.accommodates > maxAccommodates) {
-                    maxAccommodates = +d.accommodates;
+                if (accommodates > maxAccommodates) {
+                    maxAccommodates = accommodates;
                 }
-                if (+d.bedrooms > maxBedrooms) {
-                    maxBedrooms = +d.bedrooms;
+                if (bedrooms > maxBedrooms) {
+                    maxBedrooms = bedrooms;
                 }
-                if (+d.bathrooms > maxBathrooms) {
-                    maxBathrooms = +d.bathrooms;
+                if (bathrooms > maxBathrooms) {
+                    maxBathrooms = bathrooms;
                 }
-                if (+d.price > maxPrice) {
-                    maxPrice = +d.price;
+                if (price > maxPrice) {
+                    maxPrice = price;
                 }
-                if (+d.price > maxPrice) {
-                    maxPrice = +d.price;
-                }
-                if (+d.minstay > maxStay) {
-                    maxStay = +d.minstay;
+                if (min_stay > maxStay) {
+                    maxStay = min_stay;
                 }
 
                 listingProjection = projection([d.longitude, d.latitude])
@@ -251,9 +272,22 @@
                     .append("circle")
                     .attr("cx", listingProjection[0])
                     .attr("cy", listingProjection[1])
-                    .attr("r", 1)
-                    .style("fill", "yellow");
+                    .attr("r", 2)
+                    .style("fill", price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)");
+                
+                // Add to the table
+                row = table.append("tr")
+                row.append("th").text(room_id)
+                row.append("th").attr("class", "right-align-text").text("$" + price)
+                row.append("th").text(room_type)
+                row.append("th").text(rating > 0 ? rating : "/")
+                row.append("th").text(accommodates)
+                row.append("th").text(bedrooms + "/" + bathrooms)
+                row.append("th").text(neighborhood)
+                row.append("th").text(min_stay)
+
             });
+
             setFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
         }
 
