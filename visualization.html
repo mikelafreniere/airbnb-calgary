@@ -110,6 +110,8 @@
         const PRICE_SOFT_CAP = 400;
 
         var airbnbDict = {}
+        var selectedNode = ""; // the class name of a selected listing (ex, "room-123")
+        var nodeText = "";
 
         // Define map projection
         var projection = d3.geoMercator()
@@ -117,13 +119,11 @@
             .translate([WIDTH / 2, HEIGHT / 2])
             .scale([40000]);
 
-        // Define path generator
-        var path = d3.geoPath()
-            .projection(projection);
-
-        var attachZoom = d3.zoom().scaleExtent([1, 15]).on("zoom", function() {
-            d3.select("g").attr("transform", d3.event.transform);
-        })
+        var attachZoom = d3.zoom()
+            .scaleExtent([1, 15])
+            .on("zoom", function() {
+                d3.select("g").attr("transform", d3.event.transform);
+            })
 
         // Modify SVG element
         var svg = d3.select("svg")
@@ -131,6 +131,7 @@
             .attr("height", HEIGHT)
             .call(attachZoom);
 
+        // Add an inner container to the svg for zoom and scroll functionality
         var innerGraphicContainer = svg.select("g");
 
         // Define scale quantize to sort price data into colour buckets
@@ -139,18 +140,77 @@
             .range(["rgb(186,228,179)", "rgb(116,196,118)", "rgb(49,163,84)", "rgb(0,109,44)"])
             .domain([0, PRICE_SOFT_CAP]);
 
-
         // Modify table element
         var table = d3.select("table")
             .attr("width", WIDTH + 2) // accommodate for border on svg
-        
-        d3.select("#table-panel")
-            .style("height", HEIGHT / 2 + "px")
-
         // TODO: stop header row from scrolling
+        d3.select("#table-panel")
+            .style("height", HEIGHT / 2 + "px") // restrict height of table container to allow for a scrollable table
+
+        var bodyWidth = +d3.select("body").node().getBoundingClientRect().width;
+        var rightPanelWidth = bodyWidth - (WIDTH) - 14; // total width - svg width - (borders + padding)
+
+        // Modify the right panels
+        var filterPanel = d3.select('.filter-panel')
+            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
+            .style("height", HEIGHT + "px");
+
+        var displayPanel = d3.select('.display-panel')
+            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
+            .style("height", HEIGHT / 2 + "px");
+
+        var legend = svg.append("rect")
+            .attr("fill", "rgb(56, 56, 56)")
+            .attr("x", 12)
+            .attr("y", 420)
+            .attr("width", 200)
+            .attr("height", 68)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1);
+
+        var infoWindow = svg.append("rect")
+            .attr("class", "info-window")
+            .attr("fill", "rgb(56, 56, 56)")
+            .attr("x", 12)
+            .attr("y", 12)
+            .attr("width", 250)
+            .attr("height", 110)
+            .attr("fill-opacity", 0.75)
+            .attr("display", "none"); // hide the window to begin with
+
+        // text variables within the info window
+        // TODO: cleanup
+        var viewText = svg.append("text")
+            .attr("x", 20)
+            .attr("y", 40)
+            .attr("font-size", 20)
+            .attr("fill", "white")
+            .attr("display", "none"); // hide the text to begin with
+        var roomText = svg.append("text")
+            .attr("x", 20)
+            .attr("y", 70)
+            .attr("font-size", 16)
+            .attr("fill", "white")
+            .attr("display", "none"); // hide the text to begin with
+        var priceText = svg.append("text")
+            .attr("x", 20)
+            .attr("y", 90)
+            .attr("font-size", 16)
+            .attr("fill", "white")
+            .attr("display", "none"); // hide the text to begin with
+        var accomodationText = svg.append("text")
+            .attr("x", 20)
+            .attr("y", 110)
+            .attr("font-size", 16)
+            .attr("fill", "white")
+            .attr("display", "none"); // hide the text to begin with
 
         // Draws the cartography of Calgary
         function generateMap(json) {
+            // Define path generator
+            path = d3.geoPath()
+                .projection(projection);
+            
             // Bind data and create one path per GeoJSON feature
             innerGraphicContainer.selectAll("path")
                 .data(json.features)
@@ -244,7 +304,7 @@
                     'price': price,
                     'min_stay': min_stay,
                     'lat': d.latitude,
-                    'long': d.longitude
+                    'long': d.longitude,
                 }
 
                 // Figure out max values for the filter dropdowns
@@ -264,19 +324,9 @@
                 if (min_stay > maxStay) {
                     maxStay = min_stay;
                 }
-
-                listingProjection = projection([d.longitude, d.latitude])
-
-                // Plot the listing on the map
-                innerGraphicContainer
-                    .append("circle")
-                    .attr("cx", listingProjection[0])
-                    .attr("cy", listingProjection[1])
-                    .attr("r", 2)
-                    .style("fill", price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)");
-                
+       
                 // Add to the table
-                row = table.append("tr")
+                row = table.append("tr").attr("class", "room-" + room_id);
                 row.append("th").text(room_id)
                 row.append("th").attr("class", "right-align-text").text("$" + price)
                 row.append("th").text(room_type)
@@ -287,8 +337,89 @@
                 row.append("th").text(min_stay)
 
             });
-
             setFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
+        }
+
+        function plotListings() {
+            // draw circles 
+            innerGraphicContainer.selectAll("circle").data(Object.keys(airbnbDict))
+                .enter()
+                .append("circle")
+                .attr("class", function(d) { return "room-" + d})
+                .attr("r", 2)
+                .attr("cx", function(d) {
+                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[0] // get x-coord from projection
+                })
+                .attr("cy", function(d) {
+                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[1] // get y-coord from projection
+                })
+                .attr("stroke", "black")
+                .attr("stroke-width", "0.25px")
+                .attr("fill", function(d) {
+                    price = airbnbDict[d].price;
+                    return price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)"
+                })
+                .on("click", function(d) {
+                    if (selectedNode == ".room-" + d) {
+                        // deselect the current node
+                        selectedNode = "";
+                        nodeText = "";
+                    } else { // TODO: may have to bust out into separate function after table implementation
+                        // a different node was selected, deselect it
+                        if (selectedNode != "") {
+                            d3.select(selectedNode).transition().duration(250).ease(d3.easeLinear)
+                                .attr("stroke-width", "0.25px").attr("r", 2).attr("stroke", "black");
+                        }
+                        // set this as selected node (the class of it)
+                        selectedNode = ".room-" + d;
+                        nodeText = [d, airbnbDict[d].price, airbnbDict[d].accommodates];
+                        // highlight this node 
+                        viewText.text("Viewing:")
+                        roomText.text("Room #: " + nodeText[0]).attr("display", "auto");
+                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "auto");
+                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "auto");
+                        d3.select(".info-window").attr("display", "auto");
+                        d3.select(selectedNode)
+                            .attr("stroke-width", "0.5px")
+                            .attr("r", 3.5)
+                            .attr("stroke", "red");
+                    }
+                })
+                .on("mouseover", function(d) {
+                    // highlight the listing
+                    d3.select(this).transition().duration(250).ease(d3.easeLinear)
+                        .attr("stroke-width", "0.5px").attr("r", 3.5)
+                        .style("cursor", "pointer");
+                    // display window with the listing info
+                    if (selectedNode != ".room-" + d) {
+                        viewText.text("Click to View:").attr("display", "auto");
+                        roomText.text("Room #: " + d).attr("display", "auto");
+                        priceText.text("Price per night: $" + airbnbDict[d].price).attr("display", "auto");
+                        accomodationText.text("Accommodates: " + airbnbDict[d].accommodates).attr("display", "auto");
+                        d3.select(".info-window").attr("display", "auto");
+                    }
+                })
+                .on("mouseout", function(d) {
+                    // remove highlight from the listing if not selected
+                    if (selectedNode != ".room-" + d) {
+                        d3.select(this).transition().duration(250).ease(d3.easeLinear)
+                            .attr("stroke-width", "0.25px").attr("r", 2).attr("stroke", "black")
+                            .style("cursor", "default");
+                    }
+
+                    if (selectedNode != "") { // revert text back to the clicked node
+                        viewText.text("Viewing:").attr("display", "auto");
+                        roomText.text("Room #: " + nodeText[0]).attr("display", "auto");
+                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "auto");
+                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "auto");
+                    } else { // hide the info window
+                        d3.select(".info-window").attr("display", "none");
+                        viewText.attr("display", "none");
+                        roomText.attr("display", "none");
+                        priceText.attr("display", "none");;
+                        accomodationText.attr("display", "none");;
+                    }
+                });
         }
 
         // Load in GeoJSON data
@@ -298,37 +429,9 @@
             //Load in cities data
             d3.csv("data/tomslee_airbnb_calgary_1443_2017-07-10.csv").then(function(data) {
                 initalizeListings(data);
+                plotListings();
             });
         });
-
-        // *** FILTER PANEL ***
-
-        var bodyWidth = +d3.select("body").node().getBoundingClientRect().width;
-        // Total width - svg width - (borders + padding)
-        var rightPanelWidth = bodyWidth - (WIDTH) - 14;
-
-        var filterPanel = d3.select('.filter-panel')
-            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
-            .style("height", HEIGHT + "px");
-
-        // TODO: append options to dropdowns based on min/max values
-
-        // *** DISPLAY PANEL ***
-
-        var displayPanel = d3.select('.display-panel')
-            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
-            .style("height", HEIGHT / 2 + "px");
-
-        // *** LEGEND ***
-
-        var legend = svg.append("rect")
-            .attr("fill", "rgb(56, 56, 56)")
-            .attr("x", "12px")
-            .attr("y", "420px")
-            .attr("width", "200px")
-            .attr("height", "68px")
-            .attr("stroke", "black")
-            .attr("stroke-width", "1px");
 
     </script>
 </html>
