@@ -110,7 +110,8 @@
         const PRICE_SOFT_CAP = 400;
 
         var airbnbDict = {}
-        var selectedNode = ""; // the class name of a selected listing (ex, "room-123")
+        var selectedNode = ""; // the class name of a currently selected listing (ex, "room-123")
+        var selectedFill = ""; // the colour of the listing before it was highlighted
         var nodeText = "";
 
         // Define map projection
@@ -364,15 +365,20 @@
                         // deselect the current node
                         selectedNode = "";
                         nodeText = "";
+                        selectedFill = "";
                     } else { // TODO: may have to bust out into separate function after table implementation
                         // a different node was selected, deselect it
                         if (selectedNode != "") {
                             d3.select(selectedNode).transition().duration(250).ease(d3.easeLinear)
-                                .attr("stroke-width", "0.25px").attr("r", 2).attr("stroke", "black");
+                                .attr("stroke-width", "0.25px")
+                                .attr("r", 2)
+                                .attr("fill", selectedFill);
                         }
-                        // set this as selected node (the class of it)
+                        // set this as selected node
                         selectedNode = ".room-" + d;
-                        nodeText = [d, airbnbDict[d].price, airbnbDict[d].accommodates];
+                        price = airbnbDict[d].price
+                        selectedFill = price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)";
+                        nodeText = [d, price, airbnbDict[d].accommodates];
                         // highlight this node 
                         viewText.text("Viewing:")
                         roomText.text("Room #: " + nodeText[0]).attr("display", "auto");
@@ -382,13 +388,14 @@
                         d3.select(selectedNode)
                             .attr("stroke-width", "0.5px")
                             .attr("r", 3.5)
-                            .attr("stroke", "red");
+                            .attr("fill", "orange");
                     }
                 })
                 .on("mouseover", function(d) {
                     // highlight the listing
                     d3.select(this).transition().duration(250).ease(d3.easeLinear)
-                        .attr("stroke-width", "0.5px").attr("r", 3.5)
+                        .attr("stroke-width", "0.5px")
+                        .attr("r", 3.5)
                         .style("cursor", "pointer");
                     // display window with the listing info
                     if (selectedNode != ".room-" + d) {
@@ -403,7 +410,12 @@
                     // remove highlight from the listing if not selected
                     if (selectedNode != ".room-" + d) {
                         d3.select(this).transition().duration(250).ease(d3.easeLinear)
-                            .attr("stroke-width", "0.25px").attr("r", 2).attr("stroke", "black")
+                            .attr("stroke-width", "0.25px")
+                            .attr("r", 2)
+                            .attr("fill", function(d) {
+                                price = airbnbDict[d].price;
+                                return price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)"
+                            })
                             .style("cursor", "default");
                     }
 
