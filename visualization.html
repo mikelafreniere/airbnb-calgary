@@ -232,35 +232,45 @@
             return colour;
         }
 
-        // Display the listings based on the filter selection, filterName refers to dict value to be maniuplated
-        function toggleDropdown(value, filterName) { // TODO: filter by min and max price
+        function toggleDropdown(value, filterName) {
             listings = innerGraphicContainer.selectAll("circle")
                 .data(Object.keys(airbnbDict))
                 .attr("display", function(d) {
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
+                    tableRow = d3.select("#row-" + d);
 
                     if (airbnbDict[d][filterName] < value) {
                         if (index < 0) { // prevent duplicates
                             airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
                         }
-                        return "none"; // hide the listing
+                        // hide the listing on table and map
+                        tableRow.style("visibility", "collapse"); 
                     } else { // listing passes filter requirements
                         if (index >= 0) {
                             airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
                         }
                     }
+
                     if (airbnbDict[d]['filteredBy'].length > 0) {
-                        return "none"; // listing is hiddden by another filter, keep it hidden
+                        // listing is hiddden by another filter, keep it hidden
+                        tableRow.style("visibility", "collapse"); 
+                        return "none";
                     } else {
+                        tableRow.style("visibility", "visible"); 
                         return "normal"; // display the listing
                     }
                 });
+            
+            table
+            
         }
 
         function toggleCheckbox(filterName) {
             listings = innerGraphicContainer.selectAll("circle")
                 .data(Object.keys(airbnbDict))
                 .attr("display", function(d) {
+                    tableRow = d3.select("#row-" + d);
+
                     if (airbnbDict[d]["room_type"] == filterName) {
                         index = airbnbDict[d]["filteredBy"].indexOf(filterName);
                         if (index >= 0) { // box was re-checked
@@ -271,25 +281,29 @@
                     }
 
                     if (airbnbDict[d]["filteredBy"].length > 0) {
+                        tableRow.style("visibility", "collapse"); 
                         return "none"; // listing is hiddden by another filter, keep it hidden
                     } else {
+                        tableRow.style("visibility", "visible"); 
                         return "normal"; // display the listing
                     }
                 });
         }
 
         function togglePrice(value, filterName) {
-            console.log(value)
             listings = innerGraphicContainer.selectAll("circle")
                 .data(Object.keys(airbnbDict))
                 .attr("display", function(d) {
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
+                    tableRow = d3.select("#row-" + d);
     
                     if ((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) {
                         if (index < 0) { // prevent duplicates
                             airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
                         }
-                        return "none"; // hide the listing
+                        // hide the listing on table and map
+                        tableRow.style("visibility", "collapse"); 
+                        return "none";
                     } else { // listing passes filter requirements
                         if (index >= 0) {
                             airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
@@ -297,8 +311,11 @@
                     }
 
                     if (airbnbDict[d]['filteredBy'].length > 0) {
-                        return "none"; // listing is hiddden by another filter, keep it hidden
+                        // listing is hiddden by another filter, keep it hidden
+                        tableRow.style("visibility", "collapse"); 
+                        return "none";
                     } else {
+                        tableRow.style("visibility", "visible"); 
                         return "normal"; // display the listing
                     }
                 });
@@ -445,7 +462,7 @@
        
                 // Add to the table
                 row = table.append("tr")
-                    .attr("class", "room-" + room_id)
+                    .attr("id", "row-" + room_id)
                     .style("background-color", getPriceFillColour(price));
                 row.append("th").text(room_id);
                 row.append("th").attr("class", "right-align-text").text("$" + price);
