@@ -87,7 +87,7 @@
 
         <div id="table-panel" class="panel gray-background">
             <table>
-                <tr class="table-headers">
+                <tr>
                     <th>Room ID</th>
                     <th>Price (per night)</th>
                     <th>Room Type</th>
@@ -138,7 +138,7 @@
         // Define scale quantize to sort price data into colour buckets
         // Colours from: http://colorbrewer2.org/#type=sequential&scheme=Greens&n=5
         var priceColour = d3.scaleQuantize()
-            .range(["rgb(186,228,179)", "rgb(116,196,118)", "rgb(49,163,84)", "rgb(0,109,44)"])
+            .range(["rgb(161,217,155)", "rgb(49,163,84)", "rgb(0,109,44)", "rgb(0,68,27)"])
             .domain([0, PRICE_SOFT_CAP]);
 
         // Modify table element
@@ -226,14 +226,55 @@
                 });
         }
 
+        // Determine the fill colour for a listing based on its price
+        function getPriceFillColour(price) {
+            colour = price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,68,27)"; // darkest green if over the cap
+            return colour;
+        }
+
+        // Display the listings based on the filter selection, filterName refers to dict value to be maniuplated
+        function filterListings(value, filterName) { // TODO: filter by min and max price
+            listings = innerGraphicContainer.selectAll("circle")
+                .data(Object.keys(airbnbDict))
+                .attr("display", function(d) {
+                    if (airbnbDict[d][filterName] < value) {
+                        airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
+                        return "none"; // hide the listing
+                    } else { // listing passes filter requirements
+                        index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
+                        if (index >= 0) {
+                            airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
+                        }
+
+                        if (airbnbDict[d]['filteredBy'].length > 0) {
+                            return "none"; // listing is hiddden by another filter, keep it hidden
+                        } else {
+                            return "auto"; // display the listing
+                        }
+                    }
+                });
+        }
+
         // Set the options in the dropdown filters
         function setFilters(accommodates, bedrooms, bathrooms, price, stay) {
-            var accommodatesDropdown = d3.select('#people');
-            var bedroomsDropdown = d3.select('#bedrooms');
-            var bathroomsDropdown = d3.select('#bathrooms');
+            var accommodatesDropdown = d3.select('#people')
+                .on("change", function() {
+                    filterListings(d3.event.target.value, 'accommodates');
+                });
+            var bedroomsDropdown = d3.select('#bedrooms')
+                .on("change", function() {
+                    filterListings(d3.event.target.value, 'bedrooms');
+                });
+            var bathroomsDropdown = d3.select('#bathrooms')
+                .on("change", function() {
+                    filterListings(d3.event.target.value, 'bathrooms');
+                });
             var minPriceDropdown = d3.select('#price-min');
             var maxPriceDropdown = d3.select('#price-max');
-            var stayDropdown = d3.select('#nights');
+            var stayDropdown = d3.select('#nights')
+                .on("change", function() {
+                    filterListings(d3.event.target.value, 'min_stay');
+                });;
             
             // Populate the 'Number of People' dropdown
             for (i = 0; i < accommodates + 1; i++) {
@@ -260,7 +301,14 @@
                     .text("$" + i);
                 maxPriceDropdown.append("option")
                     .attr("value", i)
-                    .text("$" + i);
+                    .text("$" + i)
+                    .attr("selected", function () {
+                        if (i + 50 >= price) {
+                            return true; // set last price as the selected option
+                        } else {
+                            return false;
+                        }
+                    });
             }
             // Populate the 'Number of Nights' dropdown
             for (i = 0; i < stay + 1; i++) {
@@ -272,7 +320,7 @@
 
         // Populate the listings dictionary, table, the filter dropdowns, and plot every listing onto the map
         // Note: these could be split up into separate functions but this way it can all be accomplished in one loop.
-        // TODO: cleanup large function
+        // TODO: cleanup
         function initalizeListings(data) {
             var listingProjection;
             var maxAccommodates = 0;
@@ -306,7 +354,8 @@
                     'min_stay': min_stay,
                     'lat': d.latitude,
                     'long': d.longitude,
-                }
+                    'filteredBy': [] // to be maniupluated by filters
+                };
 
                 // Figure out max values for the filter dropdowns
                 // Note: this could be hardcoded but I prefer it to be dynamic in case of data changes.
@@ -327,17 +376,19 @@
                 }
        
                 // Add to the table
-                row = table.append("tr").attr("class", "room-" + room_id);
-                row.append("th").text(room_id)
-                row.append("th").attr("class", "right-align-text").text("$" + price)
-                row.append("th").text(room_type)
-                row.append("th").text(rating > 0 ? rating : "/")
-                row.append("th").text(accommodates)
-                row.append("th").text(bedrooms + "/" + bathrooms)
-                row.append("th").text(neighborhood)
-                row.append("th").text(min_stay)
-
+                row = table.append("tr")
+                    .attr("class", "room-" + room_id)
+                    .style("background-color", getPriceFillColour(price));
+                row.append("th").text(room_id);
+                row.append("th").attr("class", "right-align-text").text("$" + price);
+                row.append("th").text(room_type);
+                row.append("th").text(rating > 0 ? rating : "/");
+                row.append("th").text(accommodates);
+                row.append("th").text(bedrooms + "/" + bathrooms);
+                row.append("th").text(neighborhood);
+                row.append("th").text(min_stay);
             });
+
             setFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
         }
 
@@ -357,8 +408,7 @@
                 .attr("stroke", "black")
                 .attr("stroke-width", "0.25px")
                 .attr("fill", function(d) {
-                    price = airbnbDict[d].price;
-                    return price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)"
+                    return getPriceFillColour(airbnbDict[d].price);
                 })
                 .on("click", function(d) {
                     if (selectedNode == ".room-" + d) {
@@ -413,8 +463,7 @@
                             .attr("stroke-width", "0.25px")
                             .attr("r", 2)
                             .attr("fill", function(d) {
-                                price = airbnbDict[d].price;
-                                return price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)"
+                                return getPriceFillColour(airbnbDict[d].price);
                             })
                             .style("cursor", "default");
                     }
@@ -444,6 +493,7 @@
                 plotListings();
             });
         });
+
 
     </script>
 </html>

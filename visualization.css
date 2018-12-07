@@ -63,7 +63,7 @@ svg {
 }
 
 .dropdown {
-    width: 60px;
+    width: 70;
 }
 
 .inline {
@@ -78,19 +78,15 @@ table {
     border-collapse: collapse;
 }
 
-.table-headers {
-    background-color: rgb(84, 114, 157)
-}
-
 td, th {
     border: 1px solid #dddddd;
     text-align: left;
     padding: 8px;
 }
 
-tr:nth-child(even) {
+/* tr:nth-child(even) {
     background-color: gray;
-}
+} */
 
 .right-align-text {
     text-align: right;
