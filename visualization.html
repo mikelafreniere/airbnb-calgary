@@ -110,7 +110,7 @@
         const PRICE_SOFT_CAP = 400;
 
         var airbnbDict = {}
-        var selectedNode = ""; // the class name of a currently selected listing (ex, "room-123")
+        var selectedListing = ""; // the room_id of the currently selected listing (ex: "1234567")
         var selectedFill = ""; // the colour of the listing before it was highlighted
         var nodeText = "";
 
@@ -179,8 +179,7 @@
             .attr("fill-opacity", 0.75)
             .attr("display", "none"); // hide the window to begin with
 
-        // text variables within the info window
-        // TODO: cleanup
+        // text variables to be displayed within the infoWindow
         var viewText = svg.append("text")
             .attr("x", 20)
             .attr("y", 40)
@@ -403,9 +402,7 @@
             }
         }
 
-        // Populate the listings dictionary, table, the filter dropdowns, and plot every listing onto the map
-        // Note: these could be split up into separate functions but this way it can all be accomplished in one loop.
-        // TODO: cleanup
+        // Populate the listings dictionary and table while finding min/max values for filters
         function initalizeListings(data) {
             var listingProjection;
             var maxAccommodates = 0;
@@ -459,22 +456,82 @@
                 if (min_stay > maxStay) {
                     maxStay = min_stay;
                 }
-       
-                // Add to the table
-                row = table.append("tr")
-                    .attr("id", "row-" + room_id)
-                    .style("background-color", getPriceFillColour(price));
-                row.append("th").text(room_id);
-                row.append("th").attr("class", "right-align-text").text("$" + price);
-                row.append("th").text(room_type);
-                row.append("th").text(rating > 0 ? rating : "/");
-                row.append("th").text(accommodates);
-                row.append("th").text(bedrooms + "/" + bathrooms);
-                row.append("th").text(neighborhood);
-                row.append("th").text(min_stay);
             });
 
             populateDropdownFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
+        }
+
+        function populateTable() {
+            table.selectAll("tr").data(Object.keys(airbnbDict))
+                .enter()
+                .append("tr")
+                .attr("id", function(d) { return "row-" + d})
+                .style("background-color", function(d) {
+                    return getPriceFillColour(airbnbDict[d].price);
+                })
+                .on("mouseover", function(d) {
+                    d3.select(this).style("cursor", "pointer");
+                })
+                .on("click", function(d) {
+                    if (selectedListing == d) {
+                        // deselect the current node
+                        d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .attr("stroke-width", "0.25px")
+                            .attr("r", 2)
+                            .attr("fill", selectedFill);
+                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style("background-color", selectedFill);
+                        d3.select(".info-window").attr("display", "none");
+                        viewText.attr("display", "none");
+                        roomText.attr("display", "none");
+                        priceText.attr("display", "none");;
+                        accomodationText.attr("display", "none");;
+
+                        selectedListing = "";
+                        nodeText = "";
+                        selectedFill = "";
+                    } else { // TODO: may have to bust out into separate function after table implementation
+                        // a different node was selected, deselect it
+                        if (selectedListing != "") {
+                            d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .attr("stroke-width", "0.25px")
+                                .attr("r", 2)
+                                .attr("fill", selectedFill);
+                            d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .style("background-color", selectedFill);
+                        }
+                        // set this as selected node
+                        selectedListing = d;
+                        price = airbnbDict[d].price
+                        selectedFill = getPriceFillColour(price);
+                        nodeText = [d, price, airbnbDict[d].accommodates];
+                        // highlight this node 
+                        viewText.text("Viewing:").attr("display", "normal");
+                        roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
+                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
+                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "normal");
+                        d3.select(".info-window").attr("display", "normal");
+                        d3.select(".room-" + selectedListing)
+                            .attr("stroke-width", "0.5px")
+                            .attr("r", 3.5)
+                            .attr("fill", "orange");
+                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style("background-color", "orange");
+                    }
+                });
+
+            // add data into each row
+            for (roomId in airbnbDict) {
+                row = d3.select("#row-" + roomId);
+                row.append("th").text(room_id);
+                row.append("th").attr("class", "right-align-text").text("$" + airbnbDict[roomId].price);
+                row.append("th").text(airbnbDict[roomId].room_type);
+                row.append("th").text(airbnbDict[roomId].rating > 0 ? airbnbDict[roomId].rating : "/");
+                row.append("th").text(airbnbDict[roomId].accommodates);
+                row.append("th").text(airbnbDict[roomId].bedrooms + "/" + airbnbDict[roomId].bathrooms);
+                row.append("th").text(airbnbDict[roomId].neighborhood);
+                row.append("th").text(airbnbDict[roomId].min_stay);
+            }
         }
 
         function plotListings() {
@@ -496,34 +553,50 @@
                     return getPriceFillColour(airbnbDict[d].price);
                 })
                 .on("click", function(d) {
-                    if (selectedNode == ".room-" + d) {
+                    if (selectedListing == d) {
                         // deselect the current node
-                        selectedNode = "";
+                        d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .attr("stroke-width", "0.25px")
+                            .attr("r", 2)
+                            .attr("fill", selectedFill);
+                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style("background-color", selectedFill);
+                        d3.select(".info-window").attr("display", "none");
+                        viewText.attr("display", "none");
+                        roomText.attr("display", "none");
+                        priceText.attr("display", "none");;
+                        accomodationText.attr("display", "none");;
+
+                        selectedListing = "";
                         nodeText = "";
                         selectedFill = "";
                     } else { // TODO: may have to bust out into separate function after table implementation
                         // a different node was selected, deselect it
-                        if (selectedNode != "") {
-                            d3.select(selectedNode).transition().duration(250).ease(d3.easeLinear)
+                        if (selectedListing != "") {
+                            d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
                                 .attr("stroke-width", "0.25px")
                                 .attr("r", 2)
                                 .attr("fill", selectedFill);
+                            d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .style("background-color", selectedFill);
                         }
                         // set this as selected node
-                        selectedNode = ".room-" + d;
+                        selectedListing = d;
                         price = airbnbDict[d].price
-                        selectedFill = price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,109,44)";
+                        selectedFill = getPriceFillColour(price);
                         nodeText = [d, price, airbnbDict[d].accommodates];
                         // highlight this node 
-                        viewText.text("Viewing:")
+                        viewText.text("Viewing:").attr("display", "normal");
                         roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
                         priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
                         accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "normal");
                         d3.select(".info-window").attr("display", "normal");
-                        d3.select(selectedNode)
+                        d3.select(".room-" + selectedListing)
                             .attr("stroke-width", "0.5px")
                             .attr("r", 3.5)
                             .attr("fill", "orange");
+                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style("background-color", "orange");
                     }
                 })
                 .on("mouseover", function(d) {
@@ -533,7 +606,7 @@
                         .attr("r", 3.5)
                         .style("cursor", "pointer");
                     // display window with the listing info
-                    if (selectedNode != ".room-" + d) {
+                    if (selectedListing != d) {
                         viewText.text("Click to View:").attr("display", "normal");
                         roomText.text("Room #: " + d).attr("display", "normal");
                         priceText.text("Price per night: $" + airbnbDict[d].price).attr("display", "normal");
@@ -543,7 +616,7 @@
                 })
                 .on("mouseout", function(d) {
                     // remove highlight from the listing if not selected
-                    if (selectedNode != ".room-" + d) {
+                    if (selectedListing != d) {
                         d3.select(this).transition().duration(250).ease(d3.easeLinear)
                             .attr("stroke-width", "0.25px")
                             .attr("r", 2)
@@ -553,7 +626,7 @@
                             .style("cursor", "default");
                     }
 
-                    if (selectedNode != "") { // revert text back to the clicked node
+                    if (selectedListing != "") { // revert text back to the clicked node
                         viewText.text("Viewing:").attr("display", "normal");
                         roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
                         priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
@@ -576,6 +649,7 @@
             d3.csv("data/tomslee_airbnb_calgary_1443_2017-07-10.csv").then(function(data) {
                 initalizeListings(data);
                 plotListings();
+                populateTable();
             });
         });
 
