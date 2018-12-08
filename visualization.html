@@ -1,91 +1,91 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta charset="utf-8">
+        <meta charset='utf-8'>
         <title>Airbnb - Calgary 2017 </title>
-        <script type="text/javascript" src="d3.v5.min.js"></script>
+        <script type='text/javascript' src='d3.v5.min.js'></script>
 
-        <link rel="stylesheet" href="/visualization.css">
+        <link rel='stylesheet' href='/visualization.css'>
     </head>
 
     <body>
-        <div class="page-header gray-background">
+        <div class='page-header gray-background'>
             <h1>Airbnb Listings: The City of Calgary</h1>
             <p>Data from July 10th, 2017</p>
         </div>
-        <div class="panel">
+        <div class='panel'>
             <svg>
                 <g></g>
             </svg>
         </div>
 
-        <div class="filter-panel panel lighter-gray-background">
-            <h2 class="filter-title gray-background">Filters:</h2>
+        <div class='filter-panel panel lighter-gray-background'>
+            <h2 class='filter-title gray-background'>Filters:</h2>
             <!-- Price -->
-            <div class="filter-section lighter-gray-background">
+            <div class='filter-section lighter-gray-background'>
                 <p>Price</p>
-                <div class="input-container">
-                    <select class="dropdown inline" id="price-min"></select>
-                    <p class="range-text inline">to</p>
-                    <select class="dropdown inline" id="price-max"></select>
+                <div class='input-container'>
+                    <select class='dropdown inline' id='price-min'></select>
+                    <p class='range-text inline'>to</p>
+                    <select class='dropdown inline' id='price-max'></select>
                 </div>
             </div>
             <!-- Rating -->
-            <div class="filter-section gray-background">
+            <div class='filter-section gray-background'>
                 <p>Rating</p>
-                <div class="input-container">
-                    <select class="dropdown" id="rating">
-                        <option value="0">All</option>
-                        <option value="1">1+</option>
-                        <option value="2">2+</option>
-                        <option value="3">3+</option>
-                        <option value="4">4+</option>
-                        <option value="5">5</option>
+                <div class='input-container'>
+                    <select class='dropdown' id='rating'>
+                        <option value='0'>All</option>
+                        <option value='1'>1+</option>
+                        <option value='2'>2+</option>
+                        <option value='3'>3+</option>
+                        <option value='4'>4+</option>
+                        <option value='5'>5</option>
                     </select>
                 </div>
             </div>
             <!-- Number of People -->
-            <div class="filter-section lighter-gray-background">
+            <div class='filter-section lighter-gray-background'>
                 <p>Number of People</p>
-                <div class="input-container">
-                    <select class="dropdown" id="people"></select>
+                <div class='input-container'>
+                    <select class='dropdown' id='people'></select>
                 </div>
             </div>
             <!-- Number of Nights -->
-            <div class="filter-section gray-background">
+            <div class='filter-section gray-background'>
                 <p> Number of Nights</p>
-                <div class="input-container">
-                    <select class="dropdown" id="nights"></select>
+                <div class='input-container'>
+                    <select class='dropdown' id='nights'></select>
                 </div>
             </div>
             <!-- Room Type -->
-            <div class="filter-section lighter-gray-background">
+            <div class='filter-section lighter-gray-background'>
                 <p>Room Type</p>
-                <div class="input-container">
-                    <div class="checkbox-grouping">
-                        <input type="checkbox" class="slider" id="private-box" checked> Private <br>
+                <div class='input-container'>
+                    <div class='checkbox-grouping'>
+                        <input type='checkbox' class='slider' id='private-box' checked> Private <br>
                     </div>
-                    <input type="checkbox" class="slider" id="house-box" checked> House <br>
-                    <input type="checkbox" class="slider" id="shared-box" checked> Shared
+                    <input type='checkbox' class='slider' id='house-box' checked> House <br>
+                    <input type='checkbox' class='slider' id='shared-box' checked> Shared
                 </div>
             </div>
             <!-- Bedroooms -->
-            <div class="filter-section gray-background">
+            <div class='filter-section gray-background'>
                 <p>Bedrooms</p>
-                <div class="input-container">
-                    <select class="dropdown" id="bedrooms"></select>
+                <div class='input-container'>
+                    <select class='dropdown' id='bedrooms'></select>
                 </div>
             </div>
             <!-- Bathrooms -->
-            <div class="filter-section lighter-gray-background">
+            <div class='filter-section lighter-gray-background'>
                 <p>Bathrooms</p>
-                <div class="input-container">
-                    <select class="dropdown" id="bathrooms"></select>
+                <div class='input-container'>
+                    <select class='dropdown' id='bathrooms'></select>
                 </div>
             </div>
         </div>
 
-        <div id="table-panel" class="panel gray-background">
+        <div id='table-panel' class='panel gray-background'>
             <table>
                 <tr>
                     <th>Room ID</th>
@@ -100,19 +100,20 @@
             </table>
         </div>
 
-        <div class="display-panel panel gray-background"></div>
+        <div class='display-panel panel gray-background'></div>
     </body>
 
-    <script type="text/javascript">
+    <script type='text/javascript'>
         const WIDTH = 1100;
         const HEIGHT = 500;
         const MIN_RIGHT_PANEL = 230;
-        const PRICE_SOFT_CAP = 400;
+        const PRICE_SOFT_CAP = 400; // the majority of the listings fall below this cap, used to prevent large outliers from skewing quantized colour scheme.
+        const DARKEST_GREEN = 'rgb(0,30,15)'; // colour for a listing that will be used if a price is greater than the soft cap
 
         var airbnbDict = {}
-        var selectedListing = ""; // the room_id of the currently selected listing (ex: "1234567")
-        var selectedFill = ""; // the colour of the listing before it was highlighted
-        var nodeText = "";
+        var selectedListing = ''; // the room_id of the currently selected listing (ex: '1234567')
+        var selectedFill = ''; // the colour of the listing before it was highlighted
+        var nodeText = '';
 
         // Define map projection
         var projection = d3.geoMercator()
@@ -120,106 +121,108 @@
             .translate([WIDTH / 2, HEIGHT / 2])
             .scale([40000]);
 
+        // Define zoom transform (** Followed example_2_zoom.html from Lab_6 to implement the zoom functionality.)
         var attachZoom = d3.zoom()
             .scaleExtent([1, 15])
-            .on("zoom", function() {
-                d3.select("g").attr("transform", d3.event.transform);
+            .on('zoom', function() {
+                d3.select('g').attr('transform', d3.event.transform);
             })
 
         // Modify SVG element
-        var svg = d3.select("svg")
-            .attr("width", WIDTH)
-            .attr("height", HEIGHT)
-            .call(attachZoom);
+        var svg = d3.select('svg')
+            .attr('width', WIDTH)
+            .attr('height', HEIGHT)
+            .call(attachZoom); // ** code from example_2_zoom.html, Lab_6
 
         // Add an inner container to the svg for zoom and scroll functionality
-        var innerGraphicContainer = svg.select("g");
+        var innerGraphicContainer = svg.select('g'); // ** code from example_2_zoom.html, Lab_6
 
-        // Define scale quantize to sort price data into colour buckets
-        // Colours from: http://colorbrewer2.org/#type=sequential&scheme=Greens&n=5
-        var priceColour = d3.scaleQuantize()
-            .range(["rgb(161,217,155)", "rgb(49,163,84)", "rgb(0,109,44)", "rgb(0,68,27)"])
+        // Define scale quantize to sort price data into colour buckets, base it between 0 to the SOFT_CAP since the majority of listings fall within that range
+        // Colours based on: http://colorbrewer2.org/#type=sequential&scheme=Greens&n=9
+        var priceColour = d3.scaleQuantize() // ** code from example_2_choropleth.html, Lab_6
+            .range(['rgb(161,217,155)', 'rgb(49,163,84)', 'rgb(0,109,44)', 'rgb(0,68,27)'])
             .domain([0, PRICE_SOFT_CAP]);
 
         // Modify table element
-        var table = d3.select("table")
-            .attr("width", WIDTH + 2) // accommodate for border on svg
+        var table = d3.select('table')
+            .attr('width', WIDTH + 2) // accommodate for border on svg
         // TODO: stop header row from scrolling
-        d3.select("#table-panel")
-            .style("height", HEIGHT / 2 + "px") // restrict height of table container to allow for a scrollable table
+        d3.select('#table-panel')
+            .style('height', HEIGHT / 2 + 'px') // restrict height of table container to allow for a scrollable table
 
-        var bodyWidth = +d3.select("body").node().getBoundingClientRect().width;
+        // Dynamically determined size of the right panels based on remaining space (Followed example_d3_force_panel.html, Lab_9)
+        var bodyWidth = +d3.select('body').node().getBoundingClientRect().width;
         var rightPanelWidth = bodyWidth - (WIDTH) - 14; // total width - svg width - (borders + padding)
 
-        // Modify the right panels
-        var filterPanel = d3.select('.filter-panel')
-            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
-            .style("height", HEIGHT + "px");
+        // Modify the right side panels
+        d3.select('.filter-panel')
+            .style('width', Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + 'px')
+            .style('height', HEIGHT + 'px');
+        d3.select('.display-panel')
+            .style('width', Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + 'px')
+            .style('height', HEIGHT / 2 + 'px');
 
-        var displayPanel = d3.select('.display-panel')
-            .style("width", Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + "px")
-            .style("height", HEIGHT / 2 + "px");
+        // Add windows onto svg (unaffected by zoom/drags and displayed in front of cartography)
+        svg.append('rect')
+            .attr('fill', 'rgb(56, 56, 56)')
+            .attr('x', 12)
+            .attr('y', 420)
+            .attr('width', 200)
+            .attr('height', 68)
+            .attr('stroke', 'black')
+            .attr('stroke-width', 1);
+        svg.append('rect')
+            .attr('class', 'info-window')
+            .attr('fill', 'rgb(56, 56, 56)')
+            .attr('x', 12)
+            .attr('y', 12)
+            .attr('width', 250)
+            .attr('height', 110)
+            .attr('fill-opacity', 0.75)
+            .attr('display', 'none'); // hide the window to begin with
 
-        var legend = svg.append("rect")
-            .attr("fill", "rgb(56, 56, 56)")
-            .attr("x", 12)
-            .attr("y", 420)
-            .attr("width", 200)
-            .attr("height", 68)
-            .attr("stroke", "black")
-            .attr("stroke-width", 1);
+        // Add text variables to be displayed within the pop-up info window (TODO: make all display properties controlled by single entity)
+        var viewText = svg.append('text')
+            .attr('x', 20)
+            .attr('y', 40)
+            .attr('font-size', 20)
+            .attr('fill', 'white')
+            .attr('display', 'none'); // hide the text on first load
+        var roomText = svg.append('text')
+            .attr('x', 20)
+            .attr('y', 70)
+            .attr('font-size', 16)
+            .attr('fill', 'white')
+            .attr('display', 'none'); // hide the text on first load
+        var priceText = svg.append('text')
+            .attr('x', 20)
+            .attr('y', 90)
+            .attr('font-size', 16)
+            .attr('fill', 'white')
+            .attr('display', 'none'); // hide the text on first load
+        var accomodationText = svg.append('text')
+            .attr('x', 20)
+            .attr('y', 110)
+            .attr('font-size', 16)
+            .attr('fill', 'white')
+            .attr('display', 'none'); // hide the text on first load
 
-        var infoWindow = svg.append("rect")
-            .attr("class", "info-window")
-            .attr("fill", "rgb(56, 56, 56)")
-            .attr("x", 12)
-            .attr("y", 12)
-            .attr("width", 250)
-            .attr("height", 110)
-            .attr("fill-opacity", 0.75)
-            .attr("display", "none"); // hide the window to begin with
-
-        // text variables to be displayed within the infoWindow
-        var viewText = svg.append("text")
-            .attr("x", 20)
-            .attr("y", 40)
-            .attr("font-size", 20)
-            .attr("fill", "white")
-            .attr("display", "none"); // hide the text to begin with
-        var roomText = svg.append("text")
-            .attr("x", 20)
-            .attr("y", 70)
-            .attr("font-size", 16)
-            .attr("fill", "white")
-            .attr("display", "none"); // hide the text to begin with
-        var priceText = svg.append("text")
-            .attr("x", 20)
-            .attr("y", 90)
-            .attr("font-size", 16)
-            .attr("fill", "white")
-            .attr("display", "none"); // hide the text to begin with
-        var accomodationText = svg.append("text")
-            .attr("x", 20)
-            .attr("y", 110)
-            .attr("font-size", 16)
-            .attr("fill", "white")
-            .attr("display", "none"); // hide the text to begin with
-
-        // Draws the cartography of Calgary
+        // Draws the choropleth for Calgary (** Followed example_2_choropleth.html from Lab_6 to create this function)
         function generateMap(json) {
             // Define path generator
             path = d3.geoPath()
                 .projection(projection);
             
             // Bind data and create one path per GeoJSON feature
-            innerGraphicContainer.selectAll("path")
+            innerGraphicContainer.selectAll('path')
                 .data(json.features)
                 .enter()
-                .append("path")
-                .attr("d", path)
-                .attr("fill", "steelblue")
-                .attr("stroke", "black")
-                .append("title")
+                .append('path')
+                .attr('d', path)
+                .attr('fill', 'steelblue')
+                .attr('stroke', 'rgb(30, 30, 30)')
+                .attr('stroke-width', 0.75)
+                .append('title')
                 .text(function(d) {
                     return d.properties.name;
                 });
@@ -227,127 +230,125 @@
 
         // Determine the fill colour for a listing based on its price
         function getPriceFillColour(price) {
-            colour = price < PRICE_SOFT_CAP ? priceColour(price) : "rgb(0,68,27)"; // darkest green if over the cap
+            colour = price <= PRICE_SOFT_CAP ? priceColour(price) : DARKEST_GREEN; // darkest green if over the soft cap (outlier)
             return colour;
         }
 
+        // Determine whether the data for a listing should be visible
+        // ** Note: I had to look up what property to use to hide the table row, I found 'visibility' by reading: 
+        // https://stackoverflow.com/questions/1144123/how-can-i-hide-an-html-table-row-tr-so-that-it-takes-up-no-space
+        // TODO: potential refactor. This is a weird function because I am returning a value to be used by the 'display' attribute of a circle, but I am 
+        //          also  setting the 'visibility' style for the table row.
+        function determineVisibility(roomId, tableRow) {
+            if (airbnbDict[roomId]['filteredBy'].length > 0) { // hide
+                tableRow.style('visibility', 'collapse');
+                return 'none';
+            } else { // display
+                tableRow.style('visibility', 'visible'); 
+                return 'normal';
+            }
+        }
+
+        // Manipulates view of the data (for the map AND table) based on which fields are currently being filtered
         function toggleDropdown(value, filterName) {
-            listings = innerGraphicContainer.selectAll("circle")
+            listings = innerGraphicContainer.selectAll('circle')
                 .data(Object.keys(airbnbDict))
-                .attr("display", function(d) {
+                .attr('display', function(d) {
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
-                    tableRow = d3.select("#row-" + d);
+                    tableRow = d3.select('#row-' + d);
 
                     if (airbnbDict[d][filterName] < value) {
                         if (index < 0) { // prevent duplicates
                             airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
                         }
                         // hide the listing on table and map
-                        tableRow.style("visibility", "collapse"); 
+                        tableRow.style('visibility', 'collapse'); 
                     } else { // listing passes filter requirements
                         if (index >= 0) {
                             airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
                         }
                     }
 
-                    if (airbnbDict[d]['filteredBy'].length > 0) {
-                        // listing is hiddden by another filter, keep it hidden
-                        tableRow.style("visibility", "collapse"); 
-                        return "none";
-                    } else {
-                        tableRow.style("visibility", "visible"); 
-                        return "normal"; // display the listing
-                    }
-                });
-            
-            table
-            
+                    return determineVisibility(d, tableRow);
+                });            
         }
 
+        // Manipulates view of the data (for the map AND table) based on which checkboxes are currently selected
         function toggleCheckbox(filterName) {
-            listings = innerGraphicContainer.selectAll("circle")
+            listings = innerGraphicContainer.selectAll('circle')
                 .data(Object.keys(airbnbDict))
-                .attr("display", function(d) {
-                    tableRow = d3.select("#row-" + d);
+                .attr('display', function(d) {
+                    tableRow = d3.select('#row-' + d);
 
-                    if (airbnbDict[d]["room_type"] == filterName) {
-                        index = airbnbDict[d]["filteredBy"].indexOf(filterName);
+                    if (airbnbDict[d]['room_type'] == filterName) {
+                        index = airbnbDict[d]['filteredBy'].indexOf(filterName);
                         if (index >= 0) { // box was re-checked
-                            airbnbDict[d]["filteredBy"].splice(index, 1);
+                            airbnbDict[d]['filteredBy'].splice(index, 1);
                         } else { // box was unchecked
-                            airbnbDict[d]["filteredBy"].push(filterName);
+                            airbnbDict[d]['filteredBy'].push(filterName);
                         }
                     }
 
-                    if (airbnbDict[d]["filteredBy"].length > 0) {
-                        tableRow.style("visibility", "collapse"); 
-                        return "none"; // listing is hiddden by another filter, keep it hidden
-                    } else {
-                        tableRow.style("visibility", "visible"); 
-                        return "normal"; // display the listing
-                    }
+                    return determineVisibility(d, tableRow);
                 });
         }
 
+        // Manipulates view of the data (for the map AND table) based on which price range is currently selected
         function togglePrice(value, filterName) {
-            listings = innerGraphicContainer.selectAll("circle")
+            listings = innerGraphicContainer.selectAll('circle')
                 .data(Object.keys(airbnbDict))
-                .attr("display", function(d) {
+                .attr('display', function(d) {
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
-                    tableRow = d3.select("#row-" + d);
+                    tableRow = d3.select('#row-' + d);
     
                     if ((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) {
                         if (index < 0) { // prevent duplicates
                             airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
                         }
                         // hide the listing on table and map
-                        tableRow.style("visibility", "collapse"); 
-                        return "none";
+                        tableRow.style('visibility', 'collapse'); 
+                        return 'none';
                     } else { // listing passes filter requirements
                         if (index >= 0) {
                             airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
                         }
                     }
 
-                    if (airbnbDict[d]['filteredBy'].length > 0) {
-                        // listing is hiddden by another filter, keep it hidden
-                        tableRow.style("visibility", "collapse"); 
-                        return "none";
-                    } else {
-                        tableRow.style("visibility", "visible"); 
-                        return "normal"; // display the listing
-                    }
+                    return determineVisibility(d, tableRow);
                 });
         }
 
-        d3.select("#house-box").on("change", function() {
-            toggleCheckbox("Entire home/apt")
+        // Add functionality to the all of the filter fields
+        // ** Note: I had to look up how to trigger the function call after a dropdown value changed. I found `on('change')` by reading: http://bl.ocks.org/jfreels/6734823
+        // ** I also had to look up how to get the value from the new input. I found `d3.event.target.value` by reading: http://bl.ocks.org/feyderm/e6cab5931755897c2eb377ccbf9fdf18
+        d3.select('#house-box').on('change', function() {
+            toggleCheckbox('Entire home/apt')
         });
-        d3.select("#private-box").on("change", function() {
-            toggleCheckbox("Private room")
+        d3.select('#private-box').on('change', function() {
+            toggleCheckbox('Private room')
         });
-        d3.select("#shared-box").on("change", function() {
-            toggleCheckbox("Shared room")
+        d3.select('#shared-box').on('change', function() {
+            toggleCheckbox('Shared room')
         });
-        d3.select('#people').on("change", function() {
+        d3.select('#people').on('change', function() {
             toggleDropdown(d3.event.target.value, 'accommodates');
         });
-        d3.select('#bedrooms').on("change", function() {
+        d3.select('#bedrooms').on('change', function() {
             toggleDropdown(d3.event.target.value, 'bedrooms');
         });
-        d3.select('#bathrooms').on("change", function() {
+        d3.select('#bathrooms').on('change', function() {
             toggleDropdown(d3.event.target.value, 'bathrooms');
         });
-        d3.select('#nights').on("change", function() {
+        d3.select('#nights').on('change', function() {
             toggleDropdown(d3.event.target.value, 'min_stay');
         });
-        d3.select('#rating').on("change", function() {
+        d3.select('#rating').on('change', function() {
             toggleDropdown(d3.event.target.value, 'rating');
         });
-        d3.select('#price-min').on("change", function() {
+        d3.select('#price-min').on('change', function() {
             togglePrice(d3.event.target.value, 'price-min');
         });
-        d3.select('#price-max').on("change", function() {
+        d3.select('#price-max').on('change', function() {
             togglePrice(d3.event.target.value, 'price-max');
         });
 
@@ -362,37 +363,38 @@
             
             // Populate the 'Number of People' dropdown
             for (i = 1; i < accommodates + 1; i++) {
-                accommodatesDropdown.append("option")
-                    .attr("value", i)
-                    .text(i + "+");
+                accommodatesDropdown.append('option')
+                    .attr('value', i)
+                    .text(i + '+');
             }
             // Populate the 'Bedrooms' dropdown
             for (i = 1; i < bedrooms + 1; i++) {
-                bedroomsDropdown.append("option")
-                    .attr("value", i)
-                    .text(i + "+");
+                bedroomsDropdown.append('option')
+                    .attr('value', i)
+                    .text(i + '+');
             }
-            // Populate the 'Bathrooms' dropdown        ** IMPORTANT NOTE: the bathroom field for EVERY listing in the dataset is 0...
+            // Populate the 'Bathrooms' dropdown --- IMPORTANT NOTE: the bathroom field for EVERY listing in the dataset is 0 for some reason (see the csv).
             for (i = 0; i < bathrooms + 1; i++) {
-                bathroomsDropdown.append("option")
-                    .attr("value", i)
-                    .text(i + "+");
+                bathroomsDropdown.append('option')
+                    .attr('value', i)
+                    .text(i + '+');
             }
-            // Populate the 'Number of Nights' dropdown     ** IMPORTANT NOTE: the minimum stay field for EVERY listing in the dataset is 0...
+            // Populate the 'Number of Nights' dropdown --- IMPORTANT NOTE: the minimum stay field for EVERY listing in the dataset is 0 for some reason (see the csv).
             for (i = 0; i < stay + 1; i++) {
-                nightsDropdown.append("option")
-                    .attr("value", i)
-                    .text(i + "+");
+                nightsDropdown.append('option')
+                    .attr('value', i)
+                    .text(i + '+');
             }
-            // Populate the 'Price' dropdowns in intervals of $50
+            // Populate the 'Price' dropdowns in intervals of $50 --- There are few listings with price greater than $400, so most of the options are a result of
+            // the outliers. I am unsure how I should properly account for this in the list of options, so I will just display them all.
             for (i = 0; i < price + 1; i+=50) {
-                minPriceDropdown.append("option")
-                    .attr("value", i)
-                    .text("$" + i);
-                maxPriceDropdown.append("option")
-                    .attr("value", i)
-                    .text("$" + i)
-                    .attr("selected", function () {
+                minPriceDropdown.append('option')
+                    .attr('value', i)
+                    .text('$' + i);
+                maxPriceDropdown.append('option')
+                    .attr('value', i)
+                    .text('$' + i)
+                    .attr('selected', function () {
                         if (i + 50 >= price) {
                             return true; // set last price as the selected option
                         } else {
@@ -402,9 +404,8 @@
             }
         }
 
-        // Populate the listings dictionary and table while finding min/max values for filters
-        function initalizeListings(data) {
-            var listingProjection;
+        // Populate the dictionary of listings keyed by room_id and find min/max values for each field type
+        function processData(data) {
             var maxAccommodates = 0;
             var maxBedrooms = 0;
             var maxBathrooms = 0;
@@ -461,193 +462,197 @@
             populateDropdownFilters(maxAccommodates, maxBedrooms, maxBathrooms, maxPrice, maxStay);
         }
 
+        // TODO: clean up code duplication in `on.('click')` found in both populateTable() and plotListings() (break out into re-usable function)
+
+        // Display the listings in the scrollable table
         function populateTable() {
-            table.selectAll("tr").data(Object.keys(airbnbDict))
+            table.selectAll('tr').data(Object.keys(airbnbDict))
                 .enter()
-                .append("tr")
-                .attr("id", function(d) { return "row-" + d})
-                .style("background-color", function(d) {
+                .append('tr')
+                .attr('id', function(d) { return 'row-' + d})
+                .style('background-color', function(d) {
                     return getPriceFillColour(airbnbDict[d].price);
                 })
-                .on("mouseover", function(d) {
-                    d3.select(this).style("cursor", "pointer");
+                .on('mouseover', function(d) {
+                    d3.select(this).style('cursor', 'pointer');
                 })
-                .on("click", function(d) {
+                .on('click', function(d) {
                     if (selectedListing == d) {
-                        // deselect the current node
-                        d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .attr("stroke-width", "0.25px")
-                            .attr("r", 2)
-                            .attr("fill", selectedFill);
-                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style("background-color", selectedFill);
-                        d3.select(".info-window").attr("display", "none");
-                        viewText.attr("display", "none");
-                        roomText.attr("display", "none");
-                        priceText.attr("display", "none");;
-                        accomodationText.attr("display", "none");;
+                        // This listing was already selected and was clicked again, so deselect it
+                        d3.select('.room-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .attr('stroke-width', '0.25px')
+                            .attr('r', 2)
+                            .attr('fill', selectedFill);
+                        d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style('background-color', selectedFill);
+                        d3.select('.info-window').attr('display', 'none');
+                        viewText.attr('display', 'none');
+                        roomText.attr('display', 'none');
+                        priceText.attr('display', 'none');;
+                        accomodationText.attr('display', 'none');;
 
-                        selectedListing = "";
-                        nodeText = "";
-                        selectedFill = "";
-                    } else { // TODO: may have to bust out into separate function after table implementation
-                        // a different node was selected, deselect it
-                        if (selectedListing != "") {
-                            d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                                .attr("stroke-width", "0.25px")
-                                .attr("r", 2)
-                                .attr("fill", selectedFill);
-                            d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                                .style("background-color", selectedFill);
+                        selectedListing = '';
+                        nodeText = '';
+                        selectedFill = '';
+                    } else {
+                        // A different listing was previously selected, deselect it
+                        if (selectedListing != '') {
+                            d3.select('.room-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .attr('stroke-width', '0.25px')
+                                .attr('r', 2)
+                                .attr('fill', selectedFill);
+                            d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .style('background-color', selectedFill);
                         }
-                        // set this as selected node
+                        // Set this as the selected node
                         selectedListing = d;
                         price = airbnbDict[d].price
                         selectedFill = getPriceFillColour(price);
                         nodeText = [d, price, airbnbDict[d].accommodates];
-                        // highlight this node 
-                        viewText.text("Viewing:").attr("display", "normal");
-                        roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
-                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
-                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "normal");
-                        d3.select(".info-window").attr("display", "normal");
-                        d3.select(".room-" + selectedListing)
-                            .attr("stroke-width", "0.5px")
-                            .attr("r", 3.5)
-                            .attr("fill", "orange");
-                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style("background-color", "orange");
+                        // Highlight this corresponding listing 
+                        viewText.text('Viewing:').attr('display', 'normal');
+                        roomText.text('Room #: ' + nodeText[0]).attr('display', 'normal');
+                        priceText.text('Price per night: $' + nodeText[1]).attr('display', 'normal');
+                        accomodationText.text('Accommodates: ' + nodeText[2]).attr('display', 'normal');
+                        d3.select('.info-window').attr('display', 'normal');
+                        d3.select('.room-' + selectedListing)
+                            .attr('stroke-width', '0.5px')
+                            .attr('r', 3.5)
+                            .attr('fill', 'orange');
+                        d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style('background-color', 'orange');
                     }
                 });
 
-            // add data into each row
+            // Add data into each row
             for (roomId in airbnbDict) {
-                row = d3.select("#row-" + roomId);
-                row.append("th").text(room_id);
-                row.append("th").attr("class", "right-align-text").text("$" + airbnbDict[roomId].price);
-                row.append("th").text(airbnbDict[roomId].room_type);
-                row.append("th").text(airbnbDict[roomId].rating > 0 ? airbnbDict[roomId].rating : "/");
-                row.append("th").text(airbnbDict[roomId].accommodates);
-                row.append("th").text(airbnbDict[roomId].bedrooms + "/" + airbnbDict[roomId].bathrooms);
-                row.append("th").text(airbnbDict[roomId].neighborhood);
-                row.append("th").text(airbnbDict[roomId].min_stay);
+                row = d3.select('#row-' + roomId);
+                row.append('th').text(room_id);
+                row.append('th').attr('class', 'right-align-text').text('$' + airbnbDict[roomId].price);
+                row.append('th').text(airbnbDict[roomId].room_type);
+                row.append('th').text(airbnbDict[roomId].rating > 0 ? airbnbDict[roomId].rating : '/');
+                row.append('th').text(airbnbDict[roomId].accommodates);
+                row.append('th').text(airbnbDict[roomId].bedrooms + '/' + airbnbDict[roomId].bathrooms);
+                row.append('th').text(airbnbDict[roomId].neighborhood);
+                row.append('th').text(airbnbDict[roomId].min_stay);
             }
         }
 
+        // Display the listing ontop of the choropleth of Calgary
         function plotListings() {
-            // draw circles 
-            innerGraphicContainer.selectAll("circle").data(Object.keys(airbnbDict))
+            // Draw circles 
+            innerGraphicContainer.selectAll('circle').data(Object.keys(airbnbDict))
                 .enter()
-                .append("circle")
-                .attr("class", function(d) { return "room-" + d})
-                .attr("r", 2)
-                .attr("cx", function(d) {
-                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[0] // get x-coord from projection
+                .append('circle')
+                .attr('class', function(d) { return 'room-' + d})
+                .attr('r', 2)
+                .attr('cx', function(d) {
+                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[0] // Get x-coord from projection
                 })
-                .attr("cy", function(d) {
-                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[1] // get y-coord from projection
+                .attr('cy', function(d) {
+                    return projection([airbnbDict[d].long, airbnbDict[d].lat])[1] // Get y-coord from projection
                 })
-                .attr("stroke", "black")
-                .attr("stroke-width", "0.25px")
-                .attr("fill", function(d) {
+                .attr('stroke', 'black')
+                .attr('stroke-width', '0.25px')
+                .attr('fill', function(d) {
                     return getPriceFillColour(airbnbDict[d].price);
                 })
-                .on("click", function(d) {
+                .on('click', function(d) {
                     if (selectedListing == d) {
-                        // deselect the current node
-                        d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .attr("stroke-width", "0.25px")
-                            .attr("r", 2)
-                            .attr("fill", selectedFill);
-                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style("background-color", selectedFill);
-                        d3.select(".info-window").attr("display", "none");
-                        viewText.attr("display", "none");
-                        roomText.attr("display", "none");
-                        priceText.attr("display", "none");;
-                        accomodationText.attr("display", "none");;
+                        // This listing was already selected and was clicked, again so deselect it
+                        d3.select('.room-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .attr('stroke-width', '0.25px')
+                            .attr('r', 2)
+                            .attr('fill', selectedFill);
+                        d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style('background-color', selectedFill);
+                        d3.select('.info-window').attr('display', 'none');
+                        viewText.attr('display', 'none');
+                        roomText.attr('display', 'none');
+                        priceText.attr('display', 'none');;
+                        accomodationText.attr('display', 'none');;
 
-                        selectedListing = "";
-                        nodeText = "";
-                        selectedFill = "";
-                    } else { // TODO: may have to bust out into separate function after table implementation
-                        // a different node was selected, deselect it
-                        if (selectedListing != "") {
-                            d3.select(".room-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                                .attr("stroke-width", "0.25px")
-                                .attr("r", 2)
-                                .attr("fill", selectedFill);
-                            d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                                .style("background-color", selectedFill);
+                        selectedListing = '';
+                        nodeText = '';
+                        selectedFill = '';
+                    } else {
+                        // A different listing was previously selected, deselect it
+                        if (selectedListing != '') {
+                            d3.select('.room-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .attr('stroke-width', '0.25px')
+                                .attr('r', 2)
+                                .attr('fill', selectedFill);
+                            d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                                .style('background-color', selectedFill);
                         }
-                        // set this as selected node
+                        // Set this as the selected node
                         selectedListing = d;
                         price = airbnbDict[d].price
                         selectedFill = getPriceFillColour(price);
                         nodeText = [d, price, airbnbDict[d].accommodates];
-                        // highlight this node 
-                        viewText.text("Viewing:").attr("display", "normal");
-                        roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
-                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
-                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "normal");
-                        d3.select(".info-window").attr("display", "normal");
-                        d3.select(".room-" + selectedListing)
-                            .attr("stroke-width", "0.5px")
-                            .attr("r", 3.5)
-                            .attr("fill", "orange");
-                        d3.select("#row-" + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style("background-color", "orange");
+                        // Highlight this corresponding listing 
+                        viewText.text('Viewing:').attr('display', 'normal');
+                        roomText.text('Room #: ' + nodeText[0]).attr('display', 'normal');
+                        priceText.text('Price per night: $' + nodeText[1]).attr('display', 'normal');
+                        accomodationText.text('Accommodates: ' + nodeText[2]).attr('display', 'normal');
+                        d3.select('.info-window').attr('display', 'normal');
+                        d3.select('.room-' + selectedListing)
+                            .attr('stroke-width', '0.5px')
+                            .attr('r', 3.5)
+                            .attr('fill', 'orange');
+                        d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
+                            .style('background-color', 'orange');
                     }
                 })
-                .on("mouseover", function(d) {
-                    // highlight the listing
+                .on('mouseover', function(d) {
+                    // Highlight the node being hovered over
                     d3.select(this).transition().duration(250).ease(d3.easeLinear)
-                        .attr("stroke-width", "0.5px")
-                        .attr("r", 3.5)
-                        .style("cursor", "pointer");
-                    // display window with the listing info
+                        .attr('stroke-width', '0.5px')
+                        .attr('r', 3.5)
+                        .style('cursor', 'pointer');
+                    // Display pop-up window for the listing that is being hovered over (instead of selected node or no info at all)
                     if (selectedListing != d) {
-                        viewText.text("Click to View:").attr("display", "normal");
-                        roomText.text("Room #: " + d).attr("display", "normal");
-                        priceText.text("Price per night: $" + airbnbDict[d].price).attr("display", "normal");
-                        accomodationText.text("Accommodates: " + airbnbDict[d].accommodates).attr("display", "normal");
-                        d3.select(".info-window").attr("display", "normal");
+                        viewText.text('Click to View:').attr('display', 'normal');
+                        roomText.text('Room #: ' + d).attr('display', 'normal');
+                        priceText.text('Price per night: $' + airbnbDict[d].price).attr('display', 'normal');
+                        accomodationText.text('Accommodates: ' + airbnbDict[d].accommodates).attr('display', 'normal');
+                        d3.select('.info-window').attr('display', 'normal');
                     }
                 })
-                .on("mouseout", function(d) {
-                    // remove highlight from the listing if not selected
+                .on('mouseout', function(d) {
+                    // Remove highlight from the listing if it was not clicked
                     if (selectedListing != d) {
                         d3.select(this).transition().duration(250).ease(d3.easeLinear)
-                            .attr("stroke-width", "0.25px")
-                            .attr("r", 2)
-                            .attr("fill", function(d) {
+                            .attr('stroke-width', '0.25px')
+                            .attr('r', 2)
+                            .attr('fill', function(d) {
                                 return getPriceFillColour(airbnbDict[d].price);
                             })
-                            .style("cursor", "default");
+                            .style('cursor', 'default');
                     }
 
-                    if (selectedListing != "") { // revert text back to the clicked node
-                        viewText.text("Viewing:").attr("display", "normal");
-                        roomText.text("Room #: " + nodeText[0]).attr("display", "normal");
-                        priceText.text("Price per night: $" + nodeText[1]).attr("display", "normal");
-                        accomodationText.text("Accommodates: " + nodeText[2]).attr("display", "normal");
-                    } else { // hide the info window
-                        d3.select(".info-window").attr("display", "none");
-                        viewText.attr("display", "none");
-                        roomText.attr("display", "none");
-                        priceText.attr("display", "none");;
-                        accomodationText.attr("display", "none");;
+                    if (selectedListing != '') { // Revert text back to the selected listing
+                        viewText.text('Viewing:').attr('display', 'normal');
+                        roomText.text('Room #: ' + nodeText[0]).attr('display', 'normal');
+                        priceText.text('Price per night: $' + nodeText[1]).attr('display', 'normal');
+                        accomodationText.text('Accommodates: ' + nodeText[2]).attr('display', 'normal');
+                    } else { // Hide the pop-up window
+                        d3.select('.info-window').attr('display', 'none');
+                        viewText.attr('display', 'none');
+                        roomText.attr('display', 'none');
+                        priceText.attr('display', 'none');;
+                        accomodationText.attr('display', 'none');;
                     }
                 });
         }
 
         // Load in GeoJSON data
-        d3.json("data/calgary.geojson").then(function(json) {
+        d3.json('data/calgary.geojson').then(function(json) {
             generateMap(json);
 
             //Load in cities data
-            d3.csv("data/tomslee_airbnb_calgary_1443_2017-07-10.csv").then(function(data) {
-                initalizeListings(data);
+            d3.csv('data/tomslee_airbnb_calgary_1443_2017-07-10.csv').then(function(data) {
+                processData(data);
                 plotListings();
                 populateTable();
             });
