@@ -100,20 +100,23 @@
             </table>
         </div>
 
-        <div class='display-panel panel gray-background'></div>
+        <div class='panel gray-background average-panel'></div>
     </body>
 
     <script type='text/javascript'>
         const WIDTH = 1100;
         const HEIGHT = 500;
         const MIN_RIGHT_PANEL = 230;
-        const PRICE_SOFT_CAP = 400; // the majority of the listings fall below this cap, used to prevent large outliers from skewing quantized colour scheme.
-        const DARKEST_GREEN = 'rgb(0,30,15)'; // colour for a listing that will be used if a price is greater than the soft cap
+        const PRICE_SOFT_CAP = 400; // The majority of the listings fall below this cap, used to prevent large outliers from skewing quantized colour scheme.
+        const DARKEST_GREEN = 'rgb(0,30,15)'; // Colour for a listing that will be used if a price is greater than the soft cap
+        const HIGHLIGHT_COLOUR = 'rgb(253,141,60)' // Used to highlight listings
 
         var airbnbDict = {}
-        var selectedListing = ''; // the room_id of the currently selected listing (ex: '1234567')
-        var selectedFill = ''; // the colour of the listing before it was highlighted
+        var selectedListing = ''; // The room_id of the currently selected listing (ex: '1234567')
+        var selectedFill = ''; // The colour of the listing before it was highlighted
         var nodeText = '';
+        var displayedListings = [];
+        var dictLength = 0;
 
         // Define map projection
         var projection = d3.geoMercator()
@@ -143,6 +146,8 @@
             .range(['rgb(161,217,155)', 'rgb(49,163,84)', 'rgb(0,109,44)', 'rgb(0,68,27)'])
             .domain([0, PRICE_SOFT_CAP]);
 
+        // TODO: A lot of the elements could use a loading state for smooth transitions between interactions also for the initial load
+
         // Modify table element
         var table = d3.select('table')
             .attr('width', WIDTH + 2) // accommodate for border on svg
@@ -158,7 +163,7 @@
         d3.select('.filter-panel')
             .style('width', Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + 'px')
             .style('height', HEIGHT + 'px');
-        d3.select('.display-panel')
+        var avgPanel = d3.select('.average-panel')
             .style('width', Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + 'px')
             .style('height', HEIGHT / 2 + 'px');
 
@@ -206,6 +211,17 @@
             .attr('font-size', 16)
             .attr('fill', 'white')
             .attr('display', 'none'); // hide the text on first load
+        
+        // Add text variables to be displayed in the average panel
+        var currentlyViewingText = avgPanel.append('p')
+            .style('font-size', '14px')
+            .style('padding', '12px');
+        var avgPriceText = avgPanel.append('p')
+            .style('font-size', '16px')
+            .style('margin', '12px');
+        var avgRatingText = avgPanel.append('p')
+            .style('font-size', '16px')
+            .style('margin', '12px');
 
         // Draws the choropleth for Calgary (** Followed example_2_choropleth.html from Lab_6 to create this function)
         function generateMap(json) {
@@ -219,7 +235,7 @@
                 .enter()
                 .append('path')
                 .attr('d', path)
-                .attr('fill', 'steelblue')
+                .attr('fill', 'gray')
                 .attr('stroke', 'rgb(30, 30, 30)')
                 .attr('stroke-width', 0.75)
                 .append('title')
@@ -234,16 +250,50 @@
             return colour;
         }
 
+        // Calculate field specific averages based on listings that are currently being displayed
+        function updateAveragePanel() {
+            var displayedLength = displayedListings.length;
+            var numberOfRatings = 0;
+            var totalRating = 0;
+            var totalPrice = 0;
+
+            for (i = 0; i < displayedLength; i++) {
+                roomId = displayedListings[i];
+                listing = airbnbDict[roomId];
+                totalPrice += listing.price;
+                if (listing.rating > 0) { // Some listings have not been rated, ignore them.
+                    totalRating += listing.rating;
+                    numberOfRatings += 1;
+                }
+            }
+
+            avgPrice = totalPrice / displayedLength;
+            avgRating = totalRating / numberOfRatings;
+
+            currentlyViewingText.text(displayedLength + ' of ' + dictLength + ' listings are displayed.')
+            avgPriceText.text("Average Price: $" + avgPrice.toFixed(2));
+            avgRatingText.text("Average Rating: " + avgRating.toFixed(1))
+        }
+
         // Determine whether the data for a listing should be visible
         // ** Note: I had to look up what property to use to hide the table row, I found 'visibility' by reading: 
         // https://stackoverflow.com/questions/1144123/how-can-i-hide-an-html-table-row-tr-so-that-it-takes-up-no-space
         // TODO: potential refactor. This is a weird function because I am returning a value to be used by the 'display' attribute of a circle, but I am 
         //          also  setting the 'visibility' style for the table row.
         function determineVisibility(roomId, tableRow) {
+            index = displayedListings.indexOf(roomId);
             if (airbnbDict[roomId]['filteredBy'].length > 0) { // hide
+                if (index >= 0) {
+                    displayedListings.splice(index, 1);
+                }
+
                 tableRow.style('visibility', 'collapse');
                 return 'none';
             } else { // display
+                if (index < 0) {
+                    displayedListings.push(roomId);
+                }
+
                 tableRow.style('visibility', 'visible'); 
                 return 'normal';
             }
@@ -254,23 +304,19 @@
             listings = innerGraphicContainer.selectAll('circle')
                 .data(Object.keys(airbnbDict))
                 .attr('display', function(d) {
-                    index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
+                    index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter, also used to prevent duplicate entries
                     tableRow = d3.select('#row-' + d);
 
-                    if (airbnbDict[d][filterName] < value) {
-                        if (index < 0) { // prevent duplicates
-                            airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
-                        }
-                        // hide the listing on table and map
-                        tableRow.style('visibility', 'collapse'); 
-                    } else { // listing passes filter requirements
-                        if (index >= 0) {
-                            airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
-                        }
+                    if (airbnbDict[d][filterName] < value && index < 0) {
+                        airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
+                    } else if (index >= 0){
+                        airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
                     }
 
-                    return determineVisibility(d, tableRow);
-                });            
+                    return determineVisibility(+d, tableRow);
+                });    
+
+            updateAveragePanel();       
         }
 
         // Manipulates view of the data (for the map AND table) based on which checkboxes are currently selected
@@ -289,8 +335,10 @@
                         }
                     }
 
-                    return determineVisibility(d, tableRow);
+                    return determineVisibility(+d, tableRow);
                 });
+            
+            updateAveragePanel(); 
         }
 
         // Manipulates view of the data (for the map AND table) based on which price range is currently selected
@@ -301,21 +349,17 @@
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
                     tableRow = d3.select('#row-' + d);
     
-                    if ((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) {
-                        if (index < 0) { // prevent duplicates
-                            airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
-                        }
-                        // hide the listing on table and map
-                        tableRow.style('visibility', 'collapse'); 
-                        return 'none';
-                    } else { // listing passes filter requirements
-                        if (index >= 0) {
-                            airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
-                        }
+                    // If listing outside of price range and not already filtered by price, add price to list of filters hiding the listing
+                    if (((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) && index < 0) {
+                        airbnbDict[d]['filteredBy'].push(filterName)
+                    } else if (index >= 0) { // If listing is in price range and was previously hidden by the price filter, remove filter from the list
+                        airbnbDict[d]['filteredBy'].splice(index, 1)
                     }
 
-                    return determineVisibility(d, tableRow);
+                    return determineVisibility(+d, tableRow);
                 });
+            
+            updateAveragePanel(); 
         }
 
         // Add functionality to the all of the filter fields
@@ -413,9 +457,9 @@
             var maxStay = 0;
 
             data.forEach(function(d) {
-                room_id = d.room_id;
+                roomId = d.room_id;
                 price = +d.price;
-                room_type = d.room_type;
+                roomType = d.room_type;
                 rating = +d.overall_satisfaction;
                 accommodates = +d.accommodates;
                 bedrooms = +d.bedrooms;
@@ -424,8 +468,8 @@
                 neighborhood = d.neighborhood;
 
                 // Create dictionary entry for listing data
-                airbnbDict[room_id] = {
-                    'room_type': d.room_type,
+                airbnbDict[roomId] = {
+                    'room_type': roomType,
                     'borough': d.borough,
                     'neighborhood': neighborhood,
                     'reviews': +d.reviews,
@@ -437,8 +481,11 @@
                     'min_stay': min_stay,
                     'lat': d.latitude,
                     'long': d.longitude,
-                    'filteredBy': [] // to be maniupluated by filters
+                    'filteredBy': [] // To be maniupluated by filters
                 };
+
+                displayedListings.push(+roomId); // Viewing all listings on the initial load
+                dictLength = Object.keys(airbnbDict).length; 
 
                 // Figure out max values for the filter dropdowns
                 // Note: this could be hardcoded but I prefer it to be dynamic in case of data changes.
@@ -518,16 +565,16 @@
                         d3.select('.room-' + selectedListing)
                             .attr('stroke-width', '0.5px')
                             .attr('r', 3.5)
-                            .attr('fill', 'orange');
+                            .attr('fill', HIGHLIGHT_COLOUR);
                         d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style('background-color', 'orange');
+                            .style('background-color', HIGHLIGHT_COLOUR);
                     }
                 });
 
             // Add data into each row
             for (roomId in airbnbDict) {
                 row = d3.select('#row-' + roomId);
-                row.append('th').text(room_id);
+                row.append('th').text(roomId);
                 row.append('th').attr('class', 'right-align-text').text('$' + airbnbDict[roomId].price);
                 row.append('th').text(airbnbDict[roomId].room_type);
                 row.append('th').text(airbnbDict[roomId].rating > 0 ? airbnbDict[roomId].rating : '/');
@@ -599,9 +646,9 @@
                         d3.select('.room-' + selectedListing)
                             .attr('stroke-width', '0.5px')
                             .attr('r', 3.5)
-                            .attr('fill', 'orange');
+                            .attr('fill', HIGHLIGHT_COLOUR);
                         d3.select('#row-' + selectedListing).transition().duration(250).ease(d3.easeLinear)
-                            .style('background-color', 'orange');
+                            .style('background-color', HIGHLIGHT_COLOUR);
                     }
                 })
                 .on('mouseover', function(d) {
@@ -653,6 +700,7 @@
             //Load in cities data
             d3.csv('data/tomslee_airbnb_calgary_1443_2017-07-10.csv').then(function(data) {
                 processData(data);
+                updateAveragePanel();
                 plotListings();
                 populateTable();
             });
