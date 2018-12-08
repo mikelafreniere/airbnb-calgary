@@ -107,7 +107,7 @@
         const WIDTH = 1100;
         const HEIGHT = 500;
         const MIN_RIGHT_PANEL = 230;
-        const PRICE_SOFT_CAP = 400; // The majority of the listings fall below this cap, used to prevent large outliers from skewing quantized colour scheme.
+        const PRICE_SOFT_CAP = 300; // The majority of the listings fall below this cap, used to prevent large outliers from skewing quantized colour scheme.
         const DARKEST_GREEN = 'rgb(0,30,15)'; // Colour for a listing that will be used if a price is greater than the soft cap
         const HIGHLIGHT_COLOUR = 'rgb(253,141,60)' // Used to highlight listings
 
@@ -146,6 +146,12 @@
             .range(['rgb(161,217,155)', 'rgb(49,163,84)', 'rgb(0,109,44)', 'rgb(0,68,27)'])
             .domain([0, PRICE_SOFT_CAP]);
 
+        // Determine the fill colour for a listing based on its price
+        function getPriceFillColour(price) {
+            colour = price <= PRICE_SOFT_CAP ? priceColour(price) : DARKEST_GREEN; // darkest green if over the soft cap (outlier)
+            return colour;
+        }
+
         // TODO: A lot of the elements could use a loading state for smooth transitions between interactions also for the initial load
 
         // Modify table element
@@ -167,15 +173,62 @@
             .style('width', Math.max(rightPanelWidth, MIN_RIGHT_PANEL) + 'px')
             .style('height', HEIGHT / 2 + 'px');
 
-        // Add windows onto svg (unaffected by zoom/drags and displayed in front of cartography)
+        var legendData = [{
+            'label': 'Less than $75',
+            'count': PRICE_SOFT_CAP / 4 - 1
+        }, {
+            'label': '$75 to $149',
+            'count': (PRICE_SOFT_CAP / 4)
+        }, {
+            'label': '$150 to $224',
+            'count': (PRICE_SOFT_CAP / 4) * 2
+        }, {
+            'label': '$225 to $300 ',
+            'count': (PRICE_SOFT_CAP / 4) * 3
+        }, {
+            'label': 'Greater than $300',
+            'count': PRICE_SOFT_CAP + 1
+        }];
+
+        // Add legend onto svg (unaffected by zoom/drags and displayed in front of cartography)
         svg.append('rect')
             .attr('fill', 'rgb(56, 56, 56)')
-            .attr('x', 12)
-            .attr('y', 420)
-            .attr('width', 200)
-            .attr('height', 68)
+            .attr('x', 8)
+            .attr('y', 360)
+            .attr('width', 180)
+            .attr('height', 128)
             .attr('stroke', 'black')
-            .attr('stroke-width', 1);
+            .attr('stroke-width', 0.75)
+            .attr('fill-opacity', 0.75)
+
+        var legendContainer = svg.selectAll('.legend')
+            .data(legendData)
+            .enter()
+            .append('g')
+            .attr('transform', function(d, i) {
+                var horizontalPostion = 12;
+                var verticalPosition = HEIGHT - 36 - (i * 25);
+                return "translate(" + horizontalPostion + "," + verticalPosition + ")";
+            });
+
+        legendContainer.append('rect')
+            .attr('width', 20)
+            .attr('height', 20)
+            .attr('stroke', 'black')
+            .attr('stroke-width', 0.75)
+            .style('fill', function(d) {
+                return getPriceFillColour(d.count);
+            });
+
+        legendContainer.append('text')
+            .attr('x', 36)
+            .attr('y', 15)
+            .attr('fill', 'white')
+            .text(function(d) {
+                return d.label;
+            });
+
+        // Add pop-up information window onto svg (unaffected by zoom/drags and displayed in front of cartography)
         svg.append('rect')
             .attr('class', 'info-window')
             .attr('fill', 'rgb(56, 56, 56)')
@@ -242,12 +295,6 @@
                 .text(function(d) {
                     return d.properties.name;
                 });
-        }
-
-        // Determine the fill colour for a listing based on its price
-        function getPriceFillColour(price) {
-            colour = price <= PRICE_SOFT_CAP ? priceColour(price) : DARKEST_GREEN; // darkest green if over the soft cap (outlier)
-            return colour;
         }
 
         // Calculate field specific averages based on listings that are currently being displayed
