@@ -201,6 +201,7 @@
             .attr('stroke-width', 0.75)
             .attr('fill-opacity', 0.75)
 
+        // ** Followed example_1_pie_layout.html from Lab_7 to implement the legend 
         var legendContainer = svg.selectAll('.legend')
             .data(legendData)
             .enter()
@@ -351,13 +352,15 @@
             listings = innerGraphicContainer.selectAll('circle')
                 .data(Object.keys(airbnbDict))
                 .attr('display', function(d) {
-                    index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter, also used to prevent duplicate entries
+                    index = airbnbDict[d]['filteredBy'].indexOf(filterName); // Check if listing is currently hidden by the filter, also used to prevent duplicate entries
                     tableRow = d3.select('#row-' + d);
 
-                    if (airbnbDict[d][filterName] < value && index < 0) {
-                        airbnbDict[d]['filteredBy'].push(filterName) // add filter to list of filters hiding the listing
+                    if (airbnbDict[d][filterName] < value) {
+                        if (index < 0) {
+                            airbnbDict[d]['filteredBy'].push(filterName) // Add filter to list of filters hiding the listing
+                        }
                     } else if (index >= 0){
-                        airbnbDict[d]['filteredBy'].splice(index, 1) // listing now passes requirements, so remove filter from list
+                        airbnbDict[d]['filteredBy'].splice(index, 1) // Listing now passes requirements, so remove filter from list
                     }
 
                     return determineVisibility(+d, tableRow);
@@ -395,11 +398,13 @@
                 .attr('display', function(d) {
                     index = airbnbDict[d]['filteredBy'].indexOf(filterName); // check if listing is currently hidden by the filter
                     tableRow = d3.select('#row-' + d);
-    
-                    // If listing outside of price range and not already filtered by price, add price to list of filters hiding the listing
-                    if (((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) && index < 0) {
-                        airbnbDict[d]['filteredBy'].push(filterName)
-                    } else if (index >= 0) { // If listing is in price range and was previously hidden by the price filter, remove filter from the list
+                    // If listing is outside of the specified price range and is not already filtered by price, add price to list of filters hiding the listing
+                    if ((airbnbDict[d]['price'] < value && filterName == 'price-min') || (airbnbDict[d]['price'] > value && filterName == 'price-max')) {
+                        if (index < 0) {
+                            airbnbDict[d]['filteredBy'].push(filterName)
+                        }
+                    // If listing is in price range and was previously hidden by the price filter, remove filter from the list
+                    } else if (index >= 0) {
                         airbnbDict[d]['filteredBy'].splice(index, 1)
                     }
 
@@ -752,7 +757,6 @@
                 populateTable();
             });
         });
-
 
     </script>
 </html>
